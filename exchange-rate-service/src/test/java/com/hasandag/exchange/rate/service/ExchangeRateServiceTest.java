@@ -43,7 +43,7 @@ class ExchangeRateServiceTest {
                 .lastUpdated(LocalDateTime.now())
                 .build();
         
-        when(externalExchangeRateClient.getExchangeRate(sourceCurrency.toUpperCase(), targetCurrency.toUpperCase()))
+        when(externalExchangeRateClient.getExchangeRate(sourceCurrency, targetCurrency))
                 .thenReturn(mockResponse);
 
         ExchangeRateResponse result = exchangeRateService.getExchangeRate(sourceCurrency, targetCurrency);
@@ -53,11 +53,11 @@ class ExchangeRateServiceTest {
         assertEquals(targetCurrency, result.getTargetCurrency());
         assertEquals(BigDecimal.valueOf(0.85), result.getRate());
         verify(externalExchangeRateClient, times(1))
-            .getExchangeRate(sourceCurrency.toUpperCase(), targetCurrency.toUpperCase());
+            .getExchangeRate(sourceCurrency, targetCurrency);
     }
 
     @Test
-    @DisplayName("Test case insensitive currency codes via abstraction")
+    @DisplayName("Test that currency codes are passed through to external client as-is")
     void testCaseInsensitiveCurrencyCodes() {
         String sourceCurrency = "usd";
         String targetCurrency = "eur";
@@ -68,13 +68,13 @@ class ExchangeRateServiceTest {
                 .lastUpdated(LocalDateTime.now())
                 .build();
         
-        when(externalExchangeRateClient.getExchangeRate("USD", "EUR"))
+        when(externalExchangeRateClient.getExchangeRate(sourceCurrency, targetCurrency))
                 .thenReturn(mockResponse);
 
         ExchangeRateResponse result = exchangeRateService.getExchangeRate(sourceCurrency, targetCurrency);
 
         assertNotNull(result);
         verify(externalExchangeRateClient, times(1))
-            .getExchangeRate("USD", "EUR");
+            .getExchangeRate(sourceCurrency, targetCurrency);
     }
 } 
