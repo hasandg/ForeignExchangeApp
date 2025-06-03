@@ -1,0 +1,3 @@
+networks:
+  exchange-system:
+    driver: bridge

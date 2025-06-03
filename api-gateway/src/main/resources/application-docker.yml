@@ -1,0 +1,55 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: exchange-rate-service
+          uri: ${EXCHANGE_RATE_SERVICE_URL:http://exchange-rate-service:8083}
+          predicates:
+            - Path=/api/v1/exchange-rates/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: exchangeRateService
+                fallbackUri: forward:/fallback/exchange-rates
+            - RewritePath=/api/v1/exchange-rates/(?<segment>.*), /api/v1/exchange-rates/$\{segment}
+
+        - id: conversion-service
+          uri: ${CONVERSION_SERVICE_URL:http://currency-conversion-service:8082}
+          predicates:
+            - Path=/api/v1/conversions/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: conversionService
+                fallbackUri: forward:/fallback/conversions
+            - RewritePath=/api/v1/conversions/(?<segment>.*), /api/v1/conversions/$\{segment}
+
+        - id: batch-service
+          uri: ${CONVERSION_SERVICE_URL:http://currency-conversion-service:8082}
+          predicates:
+            - Path=/api/v1/batch/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: batchService
+                fallbackUri: forward:/fallback/conversions
+            - RewritePath=/api/v1/batch/(?<segment>.*), /api/v1/batch/$\{segment}
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-size: ${RESILIENCE4J_CIRCUITBREAKER_CONFIGS_DEFAULT_SLIDING_WINDOW_SIZE:10}
+        failure-rate-threshold: ${RESILIENCE4J_CIRCUITBREAKER_CONFIGS_DEFAULT_FAILURE_RATE_THRESHOLD:50}
+
+logging:
+  file:
+    path: /app/logs
+  level:
+    com.hasandag: INFO
+    org.springframework: INFO

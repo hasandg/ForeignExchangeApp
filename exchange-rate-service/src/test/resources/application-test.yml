@@ -1,0 +1,12 @@
+spring:
+  cache:
+    type: none # Disable caching for tests
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.cache.CacheAutoConfiguration
+
+logging:
+  level:
+    com.hasandag: DEBUG
+    org.springframework.cache: DEBUG 

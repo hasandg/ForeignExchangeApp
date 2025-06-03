@@ -1,0 +1,109 @@
+services:
+
+  fx-postgres:
+    image: postgres:15-alpine
+    container_name: fx-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=currency_conversion_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - ${GLOBAL_NETWORK}
+
+  fx-mongodb:
+    image: mongo:latest
+    container_name: fx-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=fxcommanddb
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - ${GLOBAL_NETWORK}
+
+  fx-redis:
+    image: redis:7-alpine
+    container_name: fx-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - ${GLOBAL_NETWORK}
+    command: redis-server --save 60 1 --loglevel warning
+
+  api-gateway:
+    build: ../../api-gateway
+    container_name: fx-api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EXCHANGE_RATE_SERVICE_URL=http://exchange-rate-service:8083
+      - CONVERSION_SERVICE_URL=http://currency-conversion-service:8082
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka-broker-1:9092,kafka-broker-2:9092,kafka-broker-3:9092
+      - RESILIENCE4J_CIRCUITBREAKER_CONFIGS_DEFAULT_SLIDING_WINDOW_SIZE=10
+      - RESILIENCE4J_CIRCUITBREAKER_CONFIGS_DEFAULT_FAILURE_RATE_THRESHOLD=50
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - ${GLOBAL_NETWORK}
+    depends_on:
+      - exchange-rate-service
+      - currency-conversion-service
+
+  exchange-rate-service:
+    build: ../../exchange-rate-service
+    container_name: fx-exchange-rate-service
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8083
+      - EXCHANGE_API_URL=https://open.er-api.com/v6/latest
+      - SPRING_REDIS_HOST=fx-redis
+      - SPRING_REDIS_PORT=6379
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka-broker-1:9092,kafka-broker-2:9092,kafka-broker-3:9092
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - ${GLOBAL_NETWORK}
+    depends_on:
+      - fx-postgres
+      - fx-redis
+
+  currency-conversion-service:
+    build: ../../currency-conversion-service
+    container_name: fx-currency-conversion-service
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8082
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://fx-postgres:5432/currency_conversion_db
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SPRING_DATA_MONGODB_URI=mongodb://fx-mongodb:27017/fxcommanddb
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka-broker-1:9092,kafka-broker-2:9092,kafka-broker-3:9092
+      - EXCHANGE_RATE_SERVICE_URL=http://exchange-rate-service:8083
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - ${GLOBAL_NETWORK}
+    depends_on:
+      - fx-postgres
+      - fx-mongodb
+      - exchange-rate-service
+
+volumes:
+  postgres-data:
+  redis-data:
+  mongodb-data:

@@ -1,0 +1,76 @@
+server:
+  port: ${SERVER_PORT:8083}
+
+spring:
+  application:
+    name: exchange-rate-service
+  threads:
+    virtual:
+      enabled: true
+  task:
+    execution:
+      pool:
+        core-size: 5
+        max-size: 20
+        queue-capacity: 100
+        keep-alive: 60s
+        virtual-threads: true
+      thread-name-prefix: "async-task-"
+      shutdown:
+        await-termination: true
+        await-termination-period: 30s
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:redis}
+      port: ${SPRING_REDIS_PORT:6379}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+  cache:
+    type: redis
+    redis:
+      time-to-live: 2s
+      cache-null-values: false
+      key-prefix: "fx:"
+      use-key-prefix: true
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+    default-property-inclusion: non_null
+    time-zone: UTC
+
+logging:
+  level:
+    com.hasandag: INFO
+    org.springframework.web: INFO
+    org.apache.hc: INFO
+
+springdoc:
+  api-docs:
+    path: /api/v1/api-docs
+  swagger-ui:
+    path: /api/v1/swagger-ui.html
+    operationsSorter: method
+    tagsSorter: alpha
+  default-produces-media-type: application/json
+
+exchange:
+  api:
+    url: ${EXCHANGE_API_URL:https://open.er-api.com/v6/latest}
+  webclient:
+    connect-timeout: 10s
+    read-timeout: 10s
+    write-timeout: 10s
+    response-timeout: 15s
+
+external-services:
+  virtual-threads:
+    enabled: true
+    pool-size: 50
+    timeout: 30s

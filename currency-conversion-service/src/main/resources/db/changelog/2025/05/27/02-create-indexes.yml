@@ -1,0 +1,37 @@
+databaseChangeLog:
+  - changeSet:
+      id: 02-create-currency-conversions-indexes
+      author: hasandag
+      context: local,docker
+      changes:
+        - createIndex:
+            tableName: currency_conversions
+            indexName: idx_transaction_id
+            unique: true
+            columns:
+              - column:
+                  name: transaction_id
+        - createIndex:
+            tableName: currency_conversions
+            indexName: idx_timestamp
+            columns:
+              - column:
+                  name: timestamp
+        - createIndex:
+            tableName: currency_conversions
+            indexName: idx_source_target_currency
+            columns:
+              - column:
+                  name: source_currency
+              - column:
+                  name: target_currency
+      rollback:
+        - dropIndex:
+            tableName: currency_conversions
+            indexName: idx_source_target_currency
+        - dropIndex:
+            tableName: currency_conversions
+            indexName: idx_timestamp
+        - dropIndex:
+            tableName: currency_conversions
+            indexName: idx_transaction_id

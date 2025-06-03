@@ -1,0 +1,104 @@
+# Common configuration shared across all environments
+spring:
+  application:
+    name: currency-conversion-service
+  
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: none
+  
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yml
+    enabled: true
+    drop-first: false
+    default-schema: public
+    liquibase-schema: public
+    database-change-log-table: databasechangelog
+    database-change-log-lock-table: databasechangeloglock
+    tag: v1.0.0
+    test-rollback-on-update: false
+  
+  batch:
+    job:
+      enabled: false
+    jdbc:
+      initialize-schema: always
+  
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+    default-property-inclusion: non_null
+    time-zone: UTC
+  
+  task:
+    execution:
+      pool:
+        core-size: ${SPRING_TASK_CORE_SIZE:5}
+        max-size: ${SPRING_TASK_MAX_SIZE:20}
+        queue-capacity: ${SPRING_TASK_QUEUE_CAPACITY:100}
+        keep-alive: 60s
+      thread-name-prefix: "async-task-"
+      shutdown:
+        await-termination: true
+        await-termination-period: 30s
+
+# Kafka Configuration
+kafka:
+  enabled: ${KAFKA_ENABLED:true}
+  admin:
+    enabled: ${KAFKA_ADMIN_ENABLED:true}
+  topics:
+    conversion-event:
+      name: ${KAFKA_CONVERSION_TOPIC:conversion-event-topic}
+      partitions: ${KAFKA_CONVERSION_PARTITIONS:3}
+      replicas: ${KAFKA_CONVERSION_REPLICAS:1}
+
+# SpringDoc Configuration
+springdoc:
+  api-docs:
+    path: /api/v1/api-docs
+  swagger-ui:
+    path: /api/v1/swagger-ui.html
+    operationsSorter: method
+    tagsSorter: alpha
+    displayRequestDuration: true
+  default-produces-media-type: application/json
+
+# Application Specific Configuration
+conversion:
+  batch:
+    chunk-size: ${CONVERSION_BATCH_CHUNK_SIZE:100}
+    skip-limit: ${CONVERSION_BATCH_SKIP_LIMIT:1000}
+    retry-limit: ${CONVERSION_BATCH_RETRY_LIMIT:3}
+    job:
+      restart-enabled: ${CONVERSION_BATCH_RESTART_ENABLED:true}
+      max-attempts: ${CONVERSION_BATCH_MAX_ATTEMPTS:3}
+    task-executor:
+      core-pool-size: ${CONVERSION_BATCH_CORE_POOL:2}
+      max-pool-size: ${CONVERSION_BATCH_MAX_POOL:4}
+      queue-capacity: ${CONVERSION_BATCH_QUEUE_CAPACITY:100}
+      thread-name-prefix: "batch-"
+  
+  content-store:
+    max-size: ${CONVERSION_CONTENT_STORE_MAX_SIZE:100}
+    cleanup-interval: ${CONVERSION_CONTENT_STORE_CLEANUP_INTERVAL:300000}
+    max-age: ${CONVERSION_CONTENT_STORE_MAX_AGE:3600000}
+
+# Management Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true 

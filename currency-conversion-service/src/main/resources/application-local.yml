@@ -1,0 +1,145 @@
+server:
+  port: ${SERVER_PORT:8082}
+
+spring:
+  application:
+    name: currency-conversion-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/currency_conversion_db}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 30
+      minimum-idle: 10
+      idle-timeout: 300000
+      connection-timeout: 20000
+      max-lifetime: 1200000
+      leak-detection-threshold: 120000
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    show-sql: true
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yml
+    enabled: true
+    drop-first: false
+    contexts: local
+    default-schema: public
+    liquibase-schema: public
+    database-change-log-table: databasechangelog
+    database-change-log-lock-table: databasechangeloglock
+    tag: v1.0.0
+    test-rollback-on-update: false
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/fxcommanddb}
+      enabled: ${MONGODB_ENABLED:true}
+      database: fxcommanddb
+      auto-index-creation: true
+  cloud:
+    discovery:
+      enabled: false
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:19092,localhost:29092,localhost:39092}
+    consumer:
+      group-id: currency-conversion-service
+      auto-offset-reset: earliest
+      key-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.json.trusted.packages: "com.hasandag.exchange.common.dto.cqrs.*,com.hasandag.exchange.conversion.kafka.event.*"
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: "com.hasandag.exchange.common.dto.cqrs.ConversionEvent"
+        spring.deserializer.key.delegate.class: org.apache.kafka.common.serialization.StringDeserializer
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+        request.timeout.ms: 5000
+        session.timeout.ms: 10000
+        connections.max.idle.ms: 10000
+        reconnect.backoff.ms: 1000
+        retry.backoff.ms: 1000
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        request.timeout.ms: 5000
+        delivery.timeout.ms: 10000
+        connections.max.idle.ms: 10000
+        reconnect.backoff.ms: 1000
+        retry.backoff.ms: 1000
+    admin:
+      properties:
+        request.timeout.ms: 5000
+        connections.max.idle.ms: 10000
+        reconnect.backoff.ms: 1000
+        retry.backoff.ms: 1000
+  batch:
+    job:
+      enabled: false
+    jdbc:
+      initialize-schema: always
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+    default-property-inclusion: non_null
+    time-zone: UTC
+  task:
+    execution:
+      pool:
+        core-size: 5
+        max-size: 20
+        queue-capacity: 100
+        keep-alive: 60s
+      thread-name-prefix: "async-task-"
+      shutdown:
+        await-termination: true
+        await-termination-period: 30s
+
+kafka:
+  enabled: true
+  admin:
+    enabled: true
+  topics:
+    conversion-event:
+      name: conversion-event-topic
+      partitions: 3
+      replicas: 1
+
+logging:
+  level:
+    com.hasandag: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+springdoc:
+  api-docs:
+    path: /api/v1/api-docs
+  swagger-ui:
+    path: /api/v1/swagger-ui.html
+    operationsSorter: method
+    tagsSorter: alpha
+    displayRequestDuration: true
+  default-produces-media-type: application/json
+
+conversion:
+  exchange-rate-service:
+    url: ${EXCHANGE_RATE_SERVICE_URL:http://localhost:8083}
+  batch:
+    size: 1000
+    chunk-size: 100
+    skip-limit: 1000
+    job:
+      restart-enabled: true
+      max-attempts: 3
+    task-executor:
+      core-pool-size: 2
+      max-pool-size: 4
+      queue-capacity: 100
+      thread-name-prefix: "batch-"

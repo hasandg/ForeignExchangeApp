@@ -1,0 +1,5 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/2025/05/25/01-create-currency-conversions-table.yml
+  - include:
+      file: db/changelog/2025/05/27/02-create-indexes.yml
