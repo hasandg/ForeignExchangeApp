@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 @Slf4j
-public class OptimizedFileContentStoreService {
+public class FileContentStoreService {
 
     @Value("${conversion.content-store.max-size:100}")
     private int maxStoreSize;

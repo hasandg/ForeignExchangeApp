@@ -7,7 +7,6 @@ import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.support.CompositeItemWriter;
 import org.springframework.lang.NonNull;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -27,10 +26,8 @@ public class ConversionItemWriter implements ItemWriter<ConversionResponse> {
 
     @Override
     public void write(@NonNull Chunk<? extends ConversionResponse> chunk) throws Exception {
-        log.warn("🔴 CHUNK PROCESSING - Writing a chunk of {} conversion responses", chunk.size());
-        log.warn("🔴 CHUNK PROCESSING - This proves chunking is working! Chunk size: {}", chunk.size());
-        log.warn("🔴 CHUNK PROCESSING - Items in this chunk: {}", chunk.getItems().size());
+        log.debug("Writing chunk of {} conversion responses", chunk.size());
         compositeWriter.write(chunk);
-        log.warn("🔴 CHUNK PROCESSING - Successfully completed writing chunk of {} items", chunk.size());
+        log.debug("Successfully completed writing chunk of {} items", chunk.size());
     }
 } 

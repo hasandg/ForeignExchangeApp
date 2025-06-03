@@ -196,7 +196,7 @@ public class JobStatusService {
             progress.put("readSkipCount", stepExecution.getReadSkipCount());
             progress.put("writeSkipCount", stepExecution.getWriteSkipCount());
             progress.put("processSkipCount", stepExecution.getProcessSkipCount());
-            break; // Take first step execution
+            break; 
         }
         
         return progress;
@@ -256,7 +256,7 @@ public class JobStatusService {
         
         if (startTime != null) {
             if (endTime != null) {
-                // Job is completed - calculate total elapsed time
+                
                 java.time.Duration duration = java.time.Duration.between(startTime, endTime);
                 long elapsedSeconds = duration.getSeconds();
                 long elapsedMillis = duration.toMillis();
@@ -265,7 +265,7 @@ public class JobStatusService {
                 timeInfo.put("elapsedTimeFormatted", formatElapsedTime(elapsedSeconds));
                 timeInfo.put("isRunning", false);
             } else {
-                // Job is still running - calculate elapsed time from start to now
+                
                 java.time.Duration duration = java.time.Duration.between(startTime, LocalDateTime.now());
                 long elapsedSeconds = duration.getSeconds();
                 long elapsedMillis = duration.toMillis();
@@ -275,7 +275,7 @@ public class JobStatusService {
                 timeInfo.put("isRunning", true);
             }
         } else {
-            // Job hasn't started yet
+            
             timeInfo.put("elapsedTimeSeconds", 0);
             timeInfo.put("elapsedTimeMillis", 0L);
             timeInfo.put("elapsedTimeFormatted", "00:00:00");
