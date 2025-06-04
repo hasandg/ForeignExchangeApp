@@ -60,6 +60,7 @@ springdoc:
     tagsSorter: alpha
   default-produces-media-type: application/json
 
+# Exchange Rate Service Configuration
 exchange:
   api:
     url: ${EXCHANGE_API_URL:https://open.er-api.com/v6/latest}
@@ -68,9 +69,54 @@ exchange:
     read-timeout: 10s
     write-timeout: 10s
     response-timeout: 15s
+  virtual-threads:
+    connect-timeout: 5s
+    read-timeout: 30s
+  client:
+    # Advanced retry configuration
+    max-attempts: 5
+    backoff-delay-ms: 500
+    backoff-multiplier: 2.0
+    max-delay-ms: 30000
+    jitter-factor: 0.15
+    rate-limit-status-code: 429
+    
+    # Circuit breaker configuration
+    circuit-breaker-enabled: true
+    circuit-breaker-failure-threshold: 5
+    circuit-breaker-timeout-ms: 60000
+    circuit-breaker-min-calls: 3
+  
+  # Retry scheduler configuration
+  retry:
+    scheduler:
+      threads: 2
+  
+  user-agent:
+    default: "Exchange-Rate-Service/1.0"
+    virtual-threads: "Exchange-Rate-Service-VirtualThreads/1.0"
 
+# External Services Configuration
 external-services:
   virtual-threads:
     enabled: true
     pool-size: 50
     timeout: 30s
+  executors:
+    external-service:
+      thread-name-prefix: "external-service-"
+      thread-name-counter: 0
+      core-pool-size-factor: 0.5  # pool-size / 2
+      queue-capacity-factor: 2.0  # pool-size * 2
+    third-party-api:
+      thread-name-prefix: "third-party-api-"
+      thread-name-counter: 0
+      core-pool-size: 10
+      max-pool-size: 25
+      queue-capacity: 50
+    http-client:
+      thread-name-prefix: "http-client-"
+      thread-name-counter: 0
+      core-pool-size: 15
+      max-pool-size: 30
+      queue-capacity: 100

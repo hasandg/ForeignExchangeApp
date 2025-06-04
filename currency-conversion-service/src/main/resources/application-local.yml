@@ -92,24 +92,28 @@ spring:
   task:
     execution:
       pool:
-        core-size: 5
-        max-size: 20
-        queue-capacity: 100
+        core-size: ${SPRING_TASK_CORE_SIZE:5}
+        max-size: ${SPRING_TASK_MAX_SIZE:20}
+        queue-capacity: ${SPRING_TASK_QUEUE_CAPACITY:100}
         keep-alive: 60s
       thread-name-prefix: "async-task-"
       shutdown:
         await-termination: true
         await-termination-period: 30s
+  threads:
+    virtual:
+      enabled: true
 
+# Kafka Configuration
 kafka:
-  enabled: true
+  enabled: ${KAFKA_ENABLED:true}
   admin:
-    enabled: true
+    enabled: ${KAFKA_ADMIN_ENABLED:true}
   topics:
     conversion-event:
-      name: conversion-event-topic
-      partitions: 3
-      replicas: 1
+      name: ${KAFKA_CONVERSION_TOPIC:conversion-event-topic}
+      partitions: ${KAFKA_CONVERSION_PARTITIONS:3}
+      replicas: ${KAFKA_CONVERSION_REPLICAS:1}
 
 logging:
   level:
@@ -118,6 +122,7 @@ logging:
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
 
+# SpringDoc Configuration
 springdoc:
   api-docs:
     path: /api/v1/api-docs
@@ -128,18 +133,38 @@ springdoc:
     displayRequestDuration: true
   default-produces-media-type: application/json
 
+# Application Specific Configuration
 conversion:
   exchange-rate-service:
     url: ${EXCHANGE_RATE_SERVICE_URL:http://localhost:8083}
   batch:
     size: 1000
-    chunk-size: 100
-    skip-limit: 1000
+    chunk-size: ${CONVERSION_BATCH_CHUNK_SIZE:100}
+    skip-limit: ${CONVERSION_BATCH_SKIP_LIMIT:1000}
+    retry-limit: ${CONVERSION_BATCH_RETRY_LIMIT:3}
     job:
-      restart-enabled: true
-      max-attempts: 3
+      restart-enabled: ${CONVERSION_BATCH_RESTART_ENABLED:true}
+      max-attempts: ${CONVERSION_BATCH_MAX_ATTEMPTS:3}
     task-executor:
-      core-pool-size: 2
-      max-pool-size: 4
-      queue-capacity: 100
+      core-pool-size: ${CONVERSION_BATCH_CORE_POOL:2}
+      max-pool-size: ${CONVERSION_BATCH_MAX_POOL:4}
+      queue-capacity: ${CONVERSION_BATCH_QUEUE_CAPACITY:100}
       thread-name-prefix: "batch-"
+  content-store:
+    max-size: ${CONVERSION_CONTENT_STORE_MAX_SIZE:100}
+    cleanup-interval: ${CONVERSION_CONTENT_STORE_CLEANUP_INTERVAL:300000}
+    max-age: ${CONVERSION_CONTENT_STORE_MAX_AGE:3600000}
+
+# Management Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true

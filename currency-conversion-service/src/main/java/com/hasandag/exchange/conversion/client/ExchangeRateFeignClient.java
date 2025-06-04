@@ -5,7 +5,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-@FeignClient(name = "exchange-rate-service", url = "${conversion.exchange-rate-service.url:http://localhost:8083}", path = "/api/v1/exchange-rates")
+@FeignClient(name = "exchange-rate-service", url = "${conversion.exchange-rate-service.url:http://localhost:8083}/api/v1/exchange-rates")
 public interface ExchangeRateFeignClient {
 
     @GetMapping

@@ -1,4 +1,4 @@
-package com.hasandag.exchange.conversion.exception;
+package com.hasandag.exchange.common.exception;
 
 import org.springframework.http.HttpStatus;
 
@@ -18,7 +18,6 @@ public class BatchJobException extends BusinessException {
         super(errorCode, message, httpStatus, cause);
     }
     
-    // Factory methods for common scenarios
     public static BatchJobException jobNotFound(Long jobId) {
         return new BatchJobException(
             JOB_NOT_FOUND, 

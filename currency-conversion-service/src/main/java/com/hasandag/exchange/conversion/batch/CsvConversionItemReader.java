@@ -1,7 +1,7 @@
 package com.hasandag.exchange.conversion.batch;
 
 import com.hasandag.exchange.common.dto.ConversionRequest;
-import com.hasandag.exchange.conversion.service.OptimizedFileContentStoreService;
+import com.hasandag.exchange.conversion.service.FileContentStoreService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -29,7 +29,7 @@ public class CsvConversionItemReader implements ItemReader<ConversionRequest>, I
     private static final String CURRENT_ITEM_COUNT_KEY = "csv.reader.current.item.count";
 
     @Autowired
-    private OptimizedFileContentStoreService fileContentStoreService;
+    private FileContentStoreService fileContentStoreService;
 
     private String fileContent;
     private String originalFilename;
@@ -198,7 +198,7 @@ public class CsvConversionItemReader implements ItemReader<ConversionRequest>, I
                 csvParser.close();
             }
             
-            // Clean up file content from optimized centralized store
+            
             if (contentKey != null) {
                 boolean removed = fileContentStoreService.removeContent(contentKey);
                 if (removed) {
