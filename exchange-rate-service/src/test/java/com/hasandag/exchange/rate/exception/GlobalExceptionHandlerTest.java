@@ -1,8 +1,8 @@
 package com.hasandag.exchange.rate.exception;
 
-import com.hasandag.exchange.common.exception.ErrorResponse;
 import com.hasandag.exchange.common.exception.GlobalExceptionHandler;
 import com.hasandag.exchange.common.exception.RateServiceException;
+import com.hasandag.exchange.common.exception.ErrorResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -47,8 +47,7 @@ class GlobalExceptionHandlerTest {
         ErrorResponse responseBody = response.getBody();
         assertNotNull(responseBody);
         assertEquals("API error", responseBody.getMessage());
-        assertEquals(HttpStatus.SERVICE_UNAVAILABLE.value(), responseBody.getStatus());
-        assertEquals(HttpStatus.SERVICE_UNAVAILABLE.getReasonPhrase(), responseBody.getError());
+        assertEquals("RATE_SERVICE_ERROR", responseBody.getCode());
         assertNotNull(responseBody.getTimestamp());
         assertEquals("test-uri", responseBody.getPath());
     }
@@ -62,16 +61,17 @@ class GlobalExceptionHandlerTest {
         when(exception.getBindingResult()).thenReturn(bindingResult);
         when(bindingResult.getFieldErrors()).thenReturn(Collections.singletonList(fieldError));
 
-        ResponseEntity<ErrorResponse> response = exceptionHandler.handleValidationExceptions(exception, mockWebRequest);
+        ResponseEntity<ErrorResponse> response = exceptionHandler.handleMethodArgumentNotValid(exception, mockWebRequest);
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         ErrorResponse responseBody = response.getBody();
         assertNotNull(responseBody);
-        assertEquals("field: Invalid field", responseBody.getMessage());
-        assertEquals(HttpStatus.BAD_REQUEST.value(), responseBody.getStatus());
-        assertEquals(HttpStatus.BAD_REQUEST.getReasonPhrase(), responseBody.getError());
+        assertEquals("Validation failed", responseBody.getMessage());
+        assertEquals("VALIDATION_ERROR", responseBody.getCode());
         assertNotNull(responseBody.getTimestamp());
         assertEquals("test-uri", responseBody.getPath());
+        assertNotNull(responseBody.getValidationErrors());
+        assertEquals(1, responseBody.getValidationErrors().size());
     }
 
     @Test
@@ -84,9 +84,9 @@ class GlobalExceptionHandlerTest {
         ErrorResponse responseBody = response.getBody();
         assertNotNull(responseBody);
         assertEquals("Internal server error", responseBody.getMessage());
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR.value(), responseBody.getStatus());
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(), responseBody.getError());
+        assertEquals("INTERNAL_SERVER_ERROR", responseBody.getCode());
         assertNotNull(responseBody.getTimestamp());
         assertEquals("test-uri", responseBody.getPath());
+        assertEquals("Unexpected error", responseBody.getDetails());
     }
 } 

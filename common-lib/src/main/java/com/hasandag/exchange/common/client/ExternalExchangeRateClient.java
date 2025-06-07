@@ -1,11 +1,12 @@
-package com.hasandag.exchange.rate.service;
+package com.hasandag.exchange.common.client;
 
 import com.hasandag.exchange.common.dto.ExchangeRateResponse;
 
 import java.util.concurrent.CompletableFuture;
 
-public interface ExchangeRateService {
+public interface ExternalExchangeRateClient {
+    
     ExchangeRateResponse getExchangeRate(String sourceCurrency, String targetCurrency);
-
+    
     CompletableFuture<ExchangeRateResponse> getExchangeRateAsync(String sourceCurrency, String targetCurrency);
-}
+} 

@@ -40,9 +40,9 @@ class JobStatusServiceTest {
     @Test
     @DisplayName("Should include elapsed time for completed job")
     void shouldIncludeElapsedTimeForCompletedJob() {
-        // Arrange
+        
         LocalDateTime startTime = LocalDateTime.of(2024, 1, 1, 10, 0, 0);
-        LocalDateTime endTime = LocalDateTime.of(2024, 1, 1, 10, 5, 30); // 5 minutes 30 seconds later
+        LocalDateTime endTime = LocalDateTime.of(2024, 1, 1, 10, 5, 30); 
         
         mockJobExecution.setStartTime(startTime);
         mockJobExecution.setEndTime(endTime);
@@ -50,18 +50,18 @@ class JobStatusServiceTest {
         Long jobId = 100L;
         when(jobExplorer.getJobExecution(jobId)).thenReturn(mockJobExecution);
 
-        // Act
+        
         Map<String, Object> result = jobStatusService.getJobStatus(jobId);
 
-        // Assert
+        
         assertThat(result).isNotNull();
         assertThat(result).containsKey("elapsedTimeSeconds");
         assertThat(result).containsKey("elapsedTimeMillis");
         assertThat(result).containsKey("elapsedTimeFormatted");
         assertThat(result).containsKey("isRunning");
         
-        assertThat(result.get("elapsedTimeSeconds")).isEqualTo(330L); // 5 minutes 30 seconds = 330 seconds
-        assertThat(result.get("elapsedTimeMillis")).isEqualTo(330000L); // 330 seconds = 330000 milliseconds
+        assertThat(result.get("elapsedTimeSeconds")).isEqualTo(330L); 
+        assertThat(result.get("elapsedTimeMillis")).isEqualTo(330000L); 
         assertThat(result.get("elapsedTimeFormatted")).isEqualTo("00:05:30");
         assertThat(result.get("isRunning")).isEqualTo(false);
     }
@@ -69,20 +69,20 @@ class JobStatusServiceTest {
     @Test
     @DisplayName("Should include elapsed time for running job")
     void shouldIncludeElapsedTimeForRunningJob() {
-        // Arrange
-        LocalDateTime startTime = LocalDateTime.now().minusMinutes(2); // Started 2 minutes ago
+        
+        LocalDateTime startTime = LocalDateTime.now().minusMinutes(2); 
         
         mockJobExecution.setStartTime(startTime);
-        mockJobExecution.setEndTime(null); // Still running
+        mockJobExecution.setEndTime(null); 
         mockJobExecution.setStatus(BatchStatus.STARTED);
         
         Long jobId = 100L;
         when(jobExplorer.getJobExecution(jobId)).thenReturn(mockJobExecution);
 
-        // Act
+        
         Map<String, Object> result = jobStatusService.getJobStatus(jobId);
 
-        // Assert
+        
         assertThat(result).isNotNull();
         assertThat(result).containsKey("elapsedTimeSeconds");
         assertThat(result).containsKey("elapsedTimeMillis");
@@ -91,17 +91,17 @@ class JobStatusServiceTest {
         
         Long elapsedSeconds = (Long) result.get("elapsedTimeSeconds");
         Long elapsedMillis = (Long) result.get("elapsedTimeMillis");
-        assertThat(elapsedSeconds).isGreaterThan(110L); // Should be around 120 seconds (2 minutes)
-        assertThat(elapsedSeconds).isLessThan(130L); // Allow some tolerance
-        assertThat(elapsedMillis).isGreaterThan(110000L); // Should be around 120000 milliseconds
-        assertThat(elapsedMillis).isLessThan(130000L); // Allow some tolerance
+        assertThat(elapsedSeconds).isGreaterThan(110L); 
+        assertThat(elapsedSeconds).isLessThan(130L); 
+        assertThat(elapsedMillis).isGreaterThan(110000L); 
+        assertThat(elapsedMillis).isLessThan(130000L); 
         assertThat(result.get("isRunning")).isEqualTo(true);
     }
 
     @Test
     @DisplayName("Should handle job that hasn't started yet")
     void shouldHandleJobThatHasntStartedYet() {
-        // Arrange
+        
         mockJobExecution.setStartTime(null);
         mockJobExecution.setEndTime(null);
         mockJobExecution.setStatus(BatchStatus.STARTING);
@@ -109,10 +109,10 @@ class JobStatusServiceTest {
         Long jobId = 100L;
         when(jobExplorer.getJobExecution(jobId)).thenReturn(mockJobExecution);
 
-        // Act
+        
         Map<String, Object> result = jobStatusService.getJobStatus(jobId);
 
-        // Assert
+        
         assertThat(result).isNotNull();
         assertThat(result).containsKey("elapsedTimeSeconds");
         assertThat(result).containsKey("elapsedTimeMillis");
@@ -128,14 +128,14 @@ class JobStatusServiceTest {
     @Test
     @DisplayName("Should return error when job not found")
     void shouldReturnErrorWhenJobNotFound() {
-        // Arrange
+        
         Long jobId = 999L;
         when(jobExplorer.getJobExecution(jobId)).thenReturn(null);
 
-        // Act
+        
         Map<String, Object> result = jobStatusService.getJobStatus(jobId);
 
-        // Assert
+        
         assertThat(result).isNotNull();
         assertThat(result).containsKey("error");
         assertThat(result.get("error")).isEqualTo("Job not found");

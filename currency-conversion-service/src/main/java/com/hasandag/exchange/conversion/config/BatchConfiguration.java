@@ -1,5 +1,6 @@
 package com.hasandag.exchange.conversion.config;
 
+import com.hasandag.exchange.common.client.InternalExchangeRateClient;
 import com.hasandag.exchange.common.dto.ConversionRequest;
 import com.hasandag.exchange.common.dto.ConversionResponse;
 import com.hasandag.exchange.conversion.batch.ConversionItemProcessor;
@@ -7,7 +8,6 @@ import com.hasandag.exchange.conversion.batch.ConversionItemWriter;
 import com.hasandag.exchange.conversion.batch.CsvConversionItemReader;
 import com.hasandag.exchange.conversion.batch.CurrencyConversionMongoItemWriter;
 import com.hasandag.exchange.conversion.batch.CurrencyConversionPostgresItemWriter;
-import com.hasandag.exchange.conversion.client.ExchangeRateFeignClient;
 import com.hasandag.exchange.conversion.repository.command.CurrencyConversionMongoRepository;
 import com.hasandag.exchange.conversion.repository.query.CurrencyConversionPostgresRepository;
 import feign.FeignException;
@@ -47,35 +47,30 @@ public class BatchConfiguration {
 
     private final JobRepository jobRepository;
     private final PlatformTransactionManager transactionManager;
-    private final ExchangeRateFeignClient exchangeRateFeignClient;
-    private final CurrencyConversionMongoRepository mongoRepository;
+    private final InternalExchangeRateClient internalExchangeRateClient;
     private final CurrencyConversionPostgresRepository postgresRepository;
+    private final CurrencyConversionMongoRepository mongoRepository;
 
     @Bean
-    public ItemReader<ConversionRequest> csvItemReader() {
+    public ItemReader<ConversionRequest> conversionCsvItemReader() {
+        log.info("Creating CSV item reader");
         return new CsvConversionItemReader();
     }
 
     @Bean
-    public ItemProcessor<ConversionRequest, ConversionResponse> batchConversionItemProcessor() {
-        return new ConversionItemProcessor(exchangeRateFeignClient, postgresRepository, mongoRepository);
-    }
-
-    private CurrencyConversionPostgresItemWriter createPostgresItemWriter() {
-        return new CurrencyConversionPostgresItemWriter(postgresRepository);
-    }
-
-    private CurrencyConversionMongoItemWriter createMongoItemWriter() {
-        return new CurrencyConversionMongoItemWriter(mongoRepository);
+    public ItemProcessor<ConversionRequest, ConversionResponse> conversionItemProcessor() {
+        log.info("Creating conversion item processor with internal exchange rate client");
+        return new ConversionItemProcessor(internalExchangeRateClient, postgresRepository, mongoRepository);
     }
 
     @Bean
-    public ItemWriter<ConversionResponse> batchConversionItemWriter() {
+    public ItemWriter<ConversionResponse> conversionItemWriter() {
+        log.info("Creating composite conversion item writer");
+        
         List<ItemWriter<? super ConversionResponse>> delegates = new ArrayList<>();
-
-        delegates.add(createMongoItemWriter());
-        delegates.add(createPostgresItemWriter());
-
+        delegates.add(new CurrencyConversionPostgresItemWriter(postgresRepository));
+        delegates.add(new CurrencyConversionMongoItemWriter(mongoRepository));
+        
         return new ConversionItemWriter(delegates);
     }
 
@@ -126,8 +121,8 @@ public class BatchConfiguration {
 
         jobLauncher.afterPropertiesSet();
 
-        log.warn("✅ Configured ASYNC JobLauncher as PRIMARY - jobs will return immediately");
-        log.warn("✅ Using TaskExecutor: {} with core pool size: 2", batchTaskExecutor().getClass().getSimpleName());
+        log.info("Configured ASYNC JobLauncher as PRIMARY - jobs will return immediately");
+        log.info("Using TaskExecutor: {} with core pool size: 2", batchTaskExecutor().getClass().getSimpleName());
 
         return jobLauncher;
     }
@@ -146,7 +141,7 @@ public class BatchConfiguration {
 
         executor.initialize();
 
-        log.warn("✅ Configured TaskExecutor - core: 2, max: 4, queue: 100, daemon: false");
+        log.info("Configured TaskExecutor - core: 2, max: 4, queue: 100, daemon: false");
         return executor;
     }
 } 
