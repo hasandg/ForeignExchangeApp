@@ -14,7 +14,6 @@ spring:
         max-size: 20
         queue-capacity: 100
         keep-alive: 60s
-        virtual-threads: true
       thread-name-prefix: "async-task-"
       shutdown:
         await-termination: true
