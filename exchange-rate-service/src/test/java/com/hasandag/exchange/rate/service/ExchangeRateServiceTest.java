@@ -1,7 +1,7 @@
 package com.hasandag.exchange.rate.service;
 
 import com.hasandag.exchange.common.dto.ExchangeRateResponse;
-import com.hasandag.exchange.rate.client.ExchangeRateRestClient;
+import com.hasandag.exchange.common.client.ExternalExchangeRateClient;
 import com.hasandag.exchange.rate.service.impl.ExchangeRateServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,7 +21,7 @@ import static org.mockito.Mockito.*;
 class ExchangeRateServiceTest {
 
     @Mock
-    private ExchangeRateRestClient exchangeRateRestClient;
+    private ExternalExchangeRateClient externalExchangeRateClient;
 
     @InjectMocks
     private ExchangeRateServiceImpl exchangeRateService;
@@ -43,7 +43,7 @@ class ExchangeRateServiceTest {
                 .lastUpdated(LocalDateTime.now())
                 .build();
         
-        when(exchangeRateRestClient.getExchangeRate(sourceCurrency.toUpperCase(), targetCurrency.toUpperCase()))
+        when(externalExchangeRateClient.getExchangeRate(sourceCurrency.toUpperCase(), targetCurrency.toUpperCase()))
                 .thenReturn(mockResponse);
 
         ExchangeRateResponse result = exchangeRateService.getExchangeRate(sourceCurrency, targetCurrency);
@@ -52,7 +52,7 @@ class ExchangeRateServiceTest {
         assertEquals(sourceCurrency, result.getSourceCurrency());
         assertEquals(targetCurrency, result.getTargetCurrency());
         assertEquals(BigDecimal.valueOf(0.85), result.getRate());
-        verify(exchangeRateRestClient, times(1))
+        verify(externalExchangeRateClient, times(1))
             .getExchangeRate(sourceCurrency.toUpperCase(), targetCurrency.toUpperCase());
     }
 
@@ -68,13 +68,13 @@ class ExchangeRateServiceTest {
                 .lastUpdated(LocalDateTime.now())
                 .build();
         
-        when(exchangeRateRestClient.getExchangeRate("USD", "EUR"))
+        when(externalExchangeRateClient.getExchangeRate("USD", "EUR"))
                 .thenReturn(mockResponse);
 
         ExchangeRateResponse result = exchangeRateService.getExchangeRate(sourceCurrency, targetCurrency);
 
         assertNotNull(result);
-        verify(exchangeRateRestClient, times(1))
+        verify(externalExchangeRateClient, times(1))
             .getExchangeRate("USD", "EUR");
     }
 } 

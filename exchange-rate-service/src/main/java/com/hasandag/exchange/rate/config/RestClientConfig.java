@@ -8,6 +8,8 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 import java.time.Duration;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 
 @Configuration
 @Slf4j
@@ -19,6 +21,7 @@ public class RestClientConfig {
     private final Duration virtualThreadsReadTimeout;
     private final String defaultUserAgent;
     private final String virtualThreadsUserAgent;
+    private final int retrySchedulerThreads;
 
     public RestClientConfig(
             @Value("${exchange.webclient.connect-timeout:10s}") Duration connectTimeout,
@@ -26,13 +29,26 @@ public class RestClientConfig {
             @Value("${exchange.virtual-threads.connect-timeout:5s}") Duration virtualThreadsConnectTimeout,
             @Value("${exchange.virtual-threads.read-timeout:30s}") Duration virtualThreadsReadTimeout,
             @Value("${exchange.user-agent.default:Exchange-Rate-Service/1.0}") String defaultUserAgent,
-            @Value("${exchange.user-agent.virtual-threads:Exchange-Rate-Service-VirtualThreads/1.0}") String virtualThreadsUserAgent) {
+            @Value("${exchange.user-agent.virtual-threads:Exchange-Rate-Service-VirtualThreads/1.0}") String virtualThreadsUserAgent,
+            @Value("${exchange.retry.scheduler.threads:2}") int retrySchedulerThreads) {
         this.connectTimeout = connectTimeout;
         this.readTimeout = readTimeout;
         this.virtualThreadsConnectTimeout = virtualThreadsConnectTimeout;
         this.virtualThreadsReadTimeout = virtualThreadsReadTimeout;
         this.defaultUserAgent = defaultUserAgent;
         this.virtualThreadsUserAgent = virtualThreadsUserAgent;
+        this.retrySchedulerThreads = retrySchedulerThreads;
+    }
+
+    @Bean("retryScheduler")
+    public ScheduledExecutorService retryScheduler() {
+        log.info("Creating retry scheduler with {} threads", retrySchedulerThreads);
+        return Executors.newScheduledThreadPool(retrySchedulerThreads, 
+            r -> {
+                Thread thread = new Thread(r, "retry-scheduler-");
+                thread.setDaemon(true);
+                return thread;
+            });
     }
 
     @Bean("exchangeRateApiRestClient")
