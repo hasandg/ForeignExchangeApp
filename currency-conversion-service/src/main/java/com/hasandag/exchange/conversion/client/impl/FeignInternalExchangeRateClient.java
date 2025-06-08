@@ -8,8 +8,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.util.concurrent.CompletableFuture;
-
 @Component
 @Slf4j
 @RequiredArgsConstructor
@@ -33,13 +31,5 @@ public class FeignInternalExchangeRateClient implements InternalExchangeRateClie
                 String.format("Unable to get exchange rate from %s to %s: %s", 
                              sourceCurrency, targetCurrency, ex.getMessage()), ex);
         }
-    }
-
-    @Override
-    public CompletableFuture<ExchangeRateResponse> getExchangeRateAsync(String sourceCurrency, String targetCurrency) {
-        log.debug("Getting exchange rate asynchronously from {} to {} using Feign client", sourceCurrency, targetCurrency);
-        
-        
-        return CompletableFuture.supplyAsync(() -> getExchangeRate(sourceCurrency, targetCurrency));
     }
 } 

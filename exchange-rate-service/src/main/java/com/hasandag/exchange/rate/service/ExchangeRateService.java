@@ -2,10 +2,6 @@ package com.hasandag.exchange.rate.service;
 
 import com.hasandag.exchange.common.dto.ExchangeRateResponse;
 
-import java.util.concurrent.CompletableFuture;
-
 public interface ExchangeRateService {
     ExchangeRateResponse getExchangeRate(String sourceCurrency, String targetCurrency);
-
-    CompletableFuture<ExchangeRateResponse> getExchangeRateAsync(String sourceCurrency, String targetCurrency);
 }

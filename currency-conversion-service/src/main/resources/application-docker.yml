@@ -10,12 +10,12 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: 30
-      minimum-idle: 10
-      idle-timeout: 300000
-      connection-timeout: 20000
-      max-lifetime: 1200000
-      leak-detection-threshold: 120000
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:30}
+      minimum-idle: ${DB_POOL_MIN_IDLE:10}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:300000}
+      connection-timeout: ${DB_POOL_CONNECTION_TIMEOUT:20000}
+      max-lifetime: ${DB_POOL_MAX_LIFETIME:1200000}
+      leak-detection-threshold: ${DB_POOL_LEAK_DETECTION:120000}
   jpa:
     hibernate:
       ddl-auto: none
@@ -26,7 +26,7 @@ spring:
     show-sql: false
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yml
-    enabled: true
+    enabled: ${LIQUIBASE_ENABLED:true}
     drop-first: false
     contexts: docker
     default-schema: public
@@ -36,11 +36,24 @@ spring:
     tag: v1.0.0
     test-rollback-on-update: false
   data:
+    redis:
+      host: ${SPRING_REDIS_HOST:redis}
+      port: ${SPRING_REDIS_PORT:6379}
+      password: ${SPRING_REDIS_PASSWORD:}
+      timeout: ${SPRING_REDIS_TIMEOUT:2000ms}
+      lettuce:
+        pool:
+          max-active: ${SPRING_REDIS_LETTUCE_POOL_MAX_ACTIVE:8}
+          max-idle: ${SPRING_REDIS_LETTUCE_POOL_MAX_IDLE:8}
+          min-idle: ${SPRING_REDIS_LETTUCE_POOL_MIN_IDLE:0}
+          max-wait: ${SPRING_REDIS_LETTUCE_POOL_MAX_WAIT:-1ms}
     mongodb:
-      uri: ${SPRING_DATA_MONGODB_URI:fx-mongodb://mongodb:27017/fxcommanddb}
+      uri: ${MONGODB_URI:mongodb://mongo:27017/fxcommanddb}
       enabled: ${MONGODB_ENABLED:true}
       database: fxcommanddb
       auto-index-creation: true
+  cache:
+    type: redis
   cloud:
     discovery:
       enabled: false
@@ -100,8 +113,10 @@ spring:
       shutdown:
         await-termination: true
         await-termination-period: 30s
+  threads:
+    virtual:
+      enabled: ${VIRTUAL_THREADS_ENABLED:true}
 
-# Kafka Configuration
 kafka:
   enabled: ${KAFKA_ENABLED:true}
   admin:
@@ -119,7 +134,6 @@ logging:
     org.hibernate.SQL: WARN
     org.hibernate.type.descriptor.sql.BasicBinder: WARN
 
-# SpringDoc Configuration
 springdoc:
   api-docs:
     path: /api/v1/api-docs
@@ -130,11 +144,15 @@ springdoc:
     displayRequestDuration: true
   default-produces-media-type: application/json
 
-# Application Specific Configuration
 conversion:
   exchange-rate-service:
     url: ${EXCHANGE_RATE_SERVICE_URL:http://exchange-rate-service:8083}
+  cache:
+    exchange-rates:
+      ttl: ${CONVERSION_CACHE_EXCHANGE_RATES_TTL:2}  # 2 seconds
+      enabled: ${CONVERSION_CACHE_EXCHANGE_RATES_ENABLED:true}
   batch:
+    size: ${CONVERSION_BATCH_SIZE:1000}
     chunk-size: ${CONVERSION_BATCH_CHUNK_SIZE:100}
     skip-limit: ${CONVERSION_BATCH_SKIP_LIMIT:1000}
     retry-limit: ${CONVERSION_BATCH_RETRY_LIMIT:3}
@@ -151,7 +169,6 @@ conversion:
     cleanup-interval: ${CONVERSION_CONTENT_STORE_CLEANUP_INTERVAL:300000}
     max-age: ${CONVERSION_CONTENT_STORE_MAX_AGE:3600000}
 
-# Management Configuration
 management:
   endpoints:
     web:

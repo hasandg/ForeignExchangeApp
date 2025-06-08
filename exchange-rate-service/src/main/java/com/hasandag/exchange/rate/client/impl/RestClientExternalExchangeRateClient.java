@@ -5,6 +5,7 @@ import com.hasandag.exchange.common.dto.ExchangeRateResponse;
 import com.hasandag.exchange.common.exception.RateServiceException;
 import com.hasandag.exchange.common.retry.RetryConfiguration;
 import com.hasandag.exchange.common.retry.RetryService;
+import com.hasandag.exchange.common.retry.RetryServiceImpl;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -61,9 +62,9 @@ public class RestClientExternalExchangeRateClient implements ExternalExchangeRat
                 .circuitBreakerMinCalls(3)
                 .build();
         
-        this.retryService = new RetryService(retryConfig, retryScheduler);
+        this.retryService = new RetryServiceImpl(retryConfig, retryScheduler);
         
-        log.info("Initialized RestClient with virtual threads: maxAttempts={}, backoff={}ms->{}ms, multiplier={}, circuitBreaker={}", 
+        log.info("Initialized RestClient with retry service: maxAttempts={}, backoff={}ms->{}ms, multiplier={}, circuitBreaker={}", 
                 maxAttempts, backoffDelayMs, maxDelayMs, backoffMultiplier, circuitBreakerEnabled);
     }
 

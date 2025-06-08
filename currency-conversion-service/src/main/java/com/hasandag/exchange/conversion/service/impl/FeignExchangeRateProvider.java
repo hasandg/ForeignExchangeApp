@@ -5,6 +5,7 @@ import com.hasandag.exchange.common.dto.ExchangeRateResponse;
 import com.hasandag.exchange.conversion.service.ExchangeRateProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -15,11 +16,12 @@ public class FeignExchangeRateProvider implements ExchangeRateProvider {
     private final InternalExchangeRateClient internalExchangeRateClient;
 
     @Override
+    @Cacheable(value = "exchange-rates", key = "#sourceCurrency + '-' + #targetCurrency")
     public ExchangeRateResponse getExchangeRate(String sourceCurrency, String targetCurrency) {
-        log.debug("Getting exchange rate from {} to {} using internal client", sourceCurrency, targetCurrency);
+        log.info("Fetching exchange rate from {} to {} using internal client (cache miss)", sourceCurrency, targetCurrency);
         
         ExchangeRateResponse response = internalExchangeRateClient.getExchangeRate(sourceCurrency, targetCurrency);
-        log.debug("Successfully retrieved exchange rate: {} -> {} = {}", 
+        log.info("Successfully retrieved and cached exchange rate: {} -> {} = {}", 
                  sourceCurrency, targetCurrency, response.getRate());
         return response;
     }
