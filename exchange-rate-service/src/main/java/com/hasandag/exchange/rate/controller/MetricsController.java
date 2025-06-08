@@ -1,7 +1,7 @@
 package com.hasandag.exchange.rate.controller;
 
 import com.hasandag.exchange.common.retry.RetryMetrics;
-import com.hasandag.exchange.rate.client.impl.RestClientExternalExchangeRateClient;
+import com.hasandag.exchange.rate.client.impl.HttpClientExternalExchangeRateClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,7 +16,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class MetricsController {
 
-    private final RestClientExternalExchangeRateClient exchangeRateClient;
+    private final HttpClientExternalExchangeRateClient exchangeRateClient;
 
     @GetMapping("/retry")
     public ResponseEntity<Map<String, Object>> getRetryMetrics() {
