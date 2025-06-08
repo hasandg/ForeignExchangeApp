@@ -2,6 +2,7 @@ package com.hasandag.exchange.rate.retry;
 
 import com.hasandag.exchange.common.retry.RetryConfiguration;
 import com.hasandag.exchange.common.retry.RetryService;
+import com.hasandag.exchange.common.retry.RetryServiceImpl;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
@@ -71,7 +72,7 @@ public class RetryImprovementTest {
                 .circuitBreakerMinCalls(2)
                 .build();
         
-        RetryService retryService = new RetryService(config, scheduler);
+        RetryService retryService = new RetryServiceImpl(config, scheduler);
         AtomicInteger callCount = new AtomicInteger(0);
         
         log.info("=== Circuit Breaker Demonstration ===");
@@ -178,7 +179,7 @@ public class RetryImprovementTest {
                 .enableCircuitBreaker(false)
                 .build();
         
-        RetryService retryService = new RetryService(config, scheduler);
+        RetryService retryService = new RetryServiceImpl(config, scheduler);
         AtomicInteger attemptCount = new AtomicInteger(0);
         
         try {

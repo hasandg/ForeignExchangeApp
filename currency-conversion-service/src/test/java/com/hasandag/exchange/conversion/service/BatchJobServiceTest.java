@@ -1,6 +1,9 @@
 package com.hasandag.exchange.conversion.service;
 
 import com.hasandag.exchange.common.exception.BatchJobException;
+import com.hasandag.exchange.conversion.dto.JobStatusResponse;
+import com.hasandag.exchange.conversion.dto.JobListResponse;
+import com.hasandag.exchange.conversion.dto.JobStatisticsResponse;
 import com.hasandag.exchange.conversion.model.BatchJobResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -25,10 +28,9 @@ import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("BatchJobService Tests - Refactored")
+@DisplayName("BatchJobService Tests - Direct Service Usage (No Delegation)")
 class BatchJobServiceTest {
 
-    
     @Mock
     private FileValidationService fileValidationService;
 
@@ -39,12 +41,6 @@ class BatchJobServiceTest {
     private AsyncTaskManager asyncTaskManager;
 
     @Mock
-    private JobStatusServiceAdapter jobStatusServiceAdapter;
-
-    @Mock
-    private FileContentStoreService fileContentStoreService;
-
-    @Mock
     private JobLauncher jobLauncher;
 
     @Mock
@@ -52,9 +48,6 @@ class BatchJobServiceTest {
 
     @Mock
     private Job bulkConversionJob;
-
-    @Mock
-    private JobExplorer jobExplorer;
 
     @Mock
     private MultipartFile multipartFile;
@@ -72,7 +65,6 @@ class BatchJobServiceTest {
         mockJobExecution.setStatus(BatchStatus.STARTING);
         mockJobExecution.setCreateTime(LocalDateTime.now());
         
-        
         lenient().when(multipartFile.getOriginalFilename()).thenReturn("test.csv");
         lenient().when(multipartFile.getSize()).thenReturn(1024L);
     }
@@ -80,17 +72,17 @@ class BatchJobServiceTest {
     @Test
     @DisplayName("Should process synchronous job successfully")
     void shouldProcessSynchronousJobSuccessfully() {
-        
+        // Arrange
         BatchJobResponse mockResponse = BatchJobResponse.sync(
             100L, 1L, "COMPLETED", "test.csv", 1024L, "content-key-123"
         );
         
         when(jobExecutionService.executeSyncJob(any())).thenReturn(mockResponse);
 
-        
+        // Act
         Map<String, Object> result = batchJobService.processJob(multipartFile, jobLauncher, bulkConversionJob);
 
-        
+        // Assert
         assertThat(result).isNotNull();
         assertThat(result.get("jobId")).isEqualTo(100L);
         assertThat(result.get("status")).isEqualTo("COMPLETED");
@@ -102,7 +94,7 @@ class BatchJobServiceTest {
     @Test
     @DisplayName("Should process asynchronous job successfully")
     void shouldProcessAsynchronousJobSuccessfully() throws Exception {
-        
+        // Arrange
         String taskId = "task-123";
         String contentKey = "content-key-123";
         
@@ -112,10 +104,10 @@ class BatchJobServiceTest {
             BatchJobResponse.async(taskId, "SUBMITTED", "Job submitted asynchronously", "test.csv", 1024L, contentKey)
         ));
 
-        
+        // Act
         Map<String, Object> result = batchJobService.processJobAsync(multipartFile, asyncJobLauncher, bulkConversionJob);
 
-        
+        // Assert
         assertThat(result).isNotNull();
         assertThat(result.get("taskId")).isEqualTo(taskId);
         assertThat(result.get("status")).isEqualTo("SUBMITTED");
@@ -127,35 +119,37 @@ class BatchJobServiceTest {
     }
 
     @Test
-    @DisplayName("Should return job status successfully")
-    void shouldReturnJobStatusSuccessfully() {
+    @DisplayName("Should return async job status successfully")
+    void shouldReturnAsyncJobStatusSuccessfully() {
+        // Arrange
+        String taskId = "task-123";
+        BatchJobResponse mockResponse = BatchJobResponse.async(
+            taskId, "RUNNING", "Job is running", "test.csv", 1024L, "content-key-123"
+        );
         
-        Long jobId = 100L;
-        Map<String, Object> expectedResponse = new HashMap<>();
-        expectedResponse.put("jobId", jobId);
-        expectedResponse.put("status", "COMPLETED");
+        when(asyncTaskManager.getTaskStatus(taskId)).thenReturn(mockResponse);
 
-        when(jobStatusServiceAdapter.getJobStatus(jobId)).thenReturn(expectedResponse);
+        // Act
+        Map<String, Object> result = batchJobService.getAsyncJobStatus(taskId);
 
-        
-        Map<String, Object> result = batchJobService.getJobStatus(jobId);
-
-        
+        // Assert
         assertThat(result).isNotNull();
-        assertThat(result.get("jobId")).isEqualTo(jobId);
-        verify(jobStatusServiceAdapter).getJobStatus(jobId);
+        assertThat(result.get("taskId")).isEqualTo(taskId);
+        assertThat(result.get("status")).isEqualTo("RUNNING");
+        
+        verify(asyncTaskManager).getTaskStatus(taskId);
     }
 
     @Test
     @DisplayName("Should throw exception for async task not found")
     void shouldThrowExceptionForAsyncTaskNotFound() {
-        
+        // Arrange
         String taskId = "999";
         when(asyncTaskManager.getTaskStatus(taskId)).thenThrow(
             new BatchJobException("TASK_NOT_FOUND", "Task not found", org.springframework.http.HttpStatus.NOT_FOUND)
         );
 
-        
+        // Act & Assert
         assertThatThrownBy(() -> batchJobService.getAsyncJobStatus(taskId))
                 .isInstanceOf(BatchJobException.class)
                 .hasMessageContaining("Task not found");
@@ -164,28 +158,12 @@ class BatchJobServiceTest {
     }
 
     @Test
-    @DisplayName("Should throw exception when job status contains error")
-    void shouldThrowExceptionWhenJobStatusContainsError() {
-        
-        Long jobId = 999L;
-        when(jobStatusServiceAdapter.getJobStatus(jobId)).thenThrow(
-            BatchJobException.jobNotFound(jobId)
-        );
-
-        
-        assertThatThrownBy(() -> batchJobService.getJobStatus(jobId))
-                .isInstanceOf(BatchJobException.class);
-        
-        verify(jobStatusServiceAdapter).getJobStatus(jobId);
-    }
-
-    @Test
     @DisplayName("Should throw exception for empty file")
     void shouldThrowExceptionForEmptyFile() {
-        
+        // Arrange
         doThrow(BatchJobException.emptyFile()).when(fileValidationService).validateFile(multipartFile);
 
-        
+        // Act & Assert
         assertThatThrownBy(() -> batchJobService.processJob(multipartFile, jobLauncher, bulkConversionJob))
                 .isInstanceOf(BatchJobException.class);
                 
@@ -195,10 +173,10 @@ class BatchJobServiceTest {
     @Test
     @DisplayName("Should throw exception for invalid file type")
     void shouldThrowExceptionForInvalidFileType() {
-        
+        // Arrange
         doThrow(BatchJobException.invalidFileType()).when(fileValidationService).validateFile(multipartFile);
 
-        
+        // Act & Assert
         assertThatThrownBy(() -> batchJobService.processJob(multipartFile, jobLauncher, bulkConversionJob))
                 .isInstanceOf(BatchJobException.class);
                 
@@ -206,122 +184,20 @@ class BatchJobServiceTest {
     }
 
     @Test
-    @DisplayName("Should return all jobs successfully")
-    void shouldReturnAllJobsSuccessfully() {
-        
-        Map<String, Object> expectedResponse = new HashMap<>();
-        expectedResponse.put("jobs", Arrays.asList("job1", "job2"));
-        expectedResponse.put("count", 2);
+    @DisplayName("Should handle async job processing error")
+    void shouldHandleAsyncJobProcessingError() throws Exception {
+        // Arrange
+        String taskId = "task-123";
+        when(asyncTaskManager.generateTaskId()).thenReturn(taskId);
+        when(jobExecutionService.prepareFileContent(multipartFile)).thenThrow(new RuntimeException("File processing error"));
 
-        when(jobStatusServiceAdapter.getAllJobs()).thenReturn(expectedResponse);
-
-        
-        Map<String, Object> result = batchJobService.getAllJobs();
-
-        
-        assertThat(result).isNotNull();
-        assertThat(result).containsEntry("count", 2);
-        verify(jobStatusServiceAdapter).getAllJobs();
-    }
-
-    @Test
-    @DisplayName("Should return running jobs successfully")
-    void shouldReturnRunningJobsSuccessfully() {
-        
-        Map<String, Object> expectedResponse = new HashMap<>();
-        expectedResponse.put("runningJobs", Arrays.asList("job1"));
-        expectedResponse.put("count", 1);
-
-        when(jobStatusServiceAdapter.getRunningJobs()).thenReturn(expectedResponse);
-
-        
-        Map<String, Object> result = batchJobService.getRunningJobs();
-
-        
-        assertThat(result).isNotNull();
-        assertThat(result).containsEntry("count", 1);
-        verify(jobStatusServiceAdapter).getRunningJobs();
-    }
-
-    @Test
-    @DisplayName("Should return job statistics successfully")
-    void shouldReturnJobStatisticsSuccessfully() {
-        
-        Map<String, Object> expectedResponse = new HashMap<>();
-        expectedResponse.put("totalJobs", 10);
-        expectedResponse.put("completedJobs", 8);
-        expectedResponse.put("failedJobs", 1);
-        expectedResponse.put("runningJobs", 1);
-
-        when(jobStatusServiceAdapter.getJobStatistics()).thenReturn(expectedResponse);
-
-        
-        Map<String, Object> result = batchJobService.getJobStatistics();
-
-        
-        assertThat(result).isNotNull();
-        assertThat(result).containsEntry("totalJobs", 10);
-        assertThat(result).containsEntry("completedJobs", 8);
-        verify(jobStatusServiceAdapter).getJobStatistics();
-    }
-
-    @Test
-    @DisplayName("Should cleanup job content successfully")
-    void shouldCleanupJobContentSuccessfully() {
-        
-        String contentKey = "test-content-key";
-
-        
-        batchJobService.cleanupJobContent(contentKey);
-
-        
-        verify(fileContentStoreService).removeContent(contentKey);
-    }
-
-    @Test
-    @DisplayName("Should return content store stats successfully")
-    void shouldReturnContentStoreStatsSuccessfully() {
-        
-        Map<String, Object> expectedStats = new HashMap<>();
-        expectedStats.put("totalFiles", 5);
-        expectedStats.put("totalSize", 1024L);
-
-        when(fileContentStoreService.getStoreStats()).thenReturn(expectedStats);
-
-        
-        Map<String, Object> result = batchJobService.getContentStoreStats();
-
-        
-        assertThat(result).isNotNull();
-        assertThat(result).containsEntry("totalFiles", 5);
-        verify(fileContentStoreService).getStoreStats();
-    }
-    
-    @Test
-    @DisplayName("Should return active async task count")
-    void shouldReturnActiveAsyncTaskCount() {
-        
-        when(asyncTaskManager.getActiveTaskCount()).thenReturn(3);
-
-        
-        int result = batchJobService.getActiveAsyncTaskCount();
-
-        
-        assertThat(result).isEqualTo(3);
-        verify(asyncTaskManager).getActiveTaskCount();
-    }
-    
-    @Test
-    @DisplayName("Should cleanup completed async tasks")
-    void shouldCleanupCompletedAsyncTasks() {
-        
-        when(asyncTaskManager.cleanupCompletedTasks()).thenReturn(2);
-
-        
-        int result = batchJobService.cleanupCompletedAsyncTasks();
-
-        
-        assertThat(result).isEqualTo(2);
-        verify(asyncTaskManager).cleanupCompletedTasks();
+        // Act & Assert
+        assertThatThrownBy(() -> batchJobService.processJobAsync(multipartFile, asyncJobLauncher, bulkConversionJob))
+                .isInstanceOf(BatchJobException.class)
+                .hasMessageContaining("Error processing uploaded file");
+                
+        verify(fileValidationService).validateFile(multipartFile);
+        verify(asyncTaskManager).generateTaskId();
+        verify(jobExecutionService).prepareFileContent(multipartFile);
     }
 } 

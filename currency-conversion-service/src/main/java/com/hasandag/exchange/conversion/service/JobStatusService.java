@@ -1,5 +1,8 @@
 package com.hasandag.exchange.conversion.service;
 
+import com.hasandag.exchange.conversion.dto.JobListResponse;
+import com.hasandag.exchange.conversion.dto.JobStatisticsResponse;
+import com.hasandag.exchange.conversion.dto.JobStatusResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.JobExecution;
@@ -11,10 +14,8 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.time.ZoneId;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,271 +26,267 @@ public class JobStatusService {
     private final JobExplorer jobExplorer;
 
     @Cacheable(value = "job-status", key = "#jobId")
-    public Map<String, Object> getJobStatus(Long jobId) {
-        Map<String, Object> response = new HashMap<>();
-        
+    public JobStatusResponse getJobStatus(Long jobId) {
         try {
             JobExecution jobExecution = jobExplorer.getJobExecution(jobId);
             
             if (jobExecution == null) {
-                response.put("error", "Job not found");
-                return response;
+                return JobStatusResponse.builder()
+                    .error("Job not found")
+                    .build();
             }
             
             return buildJobStatusResponse(jobExecution);
             
         } catch (Exception e) {
             log.error("Error retrieving job status for job ID: {}", jobId, e);
-            response.put("error", "Error retrieving job status: " + e.getMessage());
-            return response;
+            return JobStatusResponse.builder()
+                .error("Error retrieving job status: " + e.getMessage())
+                .build();
         }
     }
 
-    public Map<String, Object> getRunningJobs() {
-        Map<String, Object> response = new HashMap<>();
-        
+    public JobListResponse getRunningJobs() {
         try {
             List<String> jobNames = jobExplorer.getJobNames();
-            List<Map<String, Object>> runningJobs = jobNames.stream()
-                    .flatMap(jobName -> jobExplorer.findRunningJobExecutions(jobName).stream())
-                    .map(this::createJobInfoMap)
+            List<JobExecution> runningExecutions = new ArrayList<>();
+            
+            for (String jobName : jobNames) {
+                Set<JobExecution> jobExecutions = jobExplorer.findRunningJobExecutions(jobName);
+                runningExecutions.addAll(jobExecutions);
+            }
+            
+            List<JobStatusResponse> runningJobs = runningExecutions.stream()
+                    .map(this::buildJobStatusResponse)
                     .collect(Collectors.toList());
             
-            response.put("runningJobs", runningJobs);
-            response.put("count", runningJobs.size());
-            
-            return response;
+            return JobListResponse.builder()
+                .jobs(runningJobs)
+                .totalJobs(runningJobs.size())
+                .build();
             
         } catch (Exception e) {
             log.error("Error retrieving running jobs", e);
-            response.put("error", "Error retrieving running jobs: " + e.getMessage());
-            return response;
+            return JobListResponse.builder()
+                .error("Error retrieving running jobs: " + e.getMessage())
+                .build();
         }
     }
 
-    public Map<String, Object> getJobStatistics() {
-        Map<String, Object> response = new HashMap<>();
-        
+    public JobStatisticsResponse getJobStatistics() {
         try {
             List<String> jobNames = jobExplorer.getJobNames();
-            Map<String, Object> statistics = new HashMap<>();
+            Map<String, JobStatisticsResponse.JobTypeStatistics> statistics = new HashMap<>();
             
             for (String jobName : jobNames) {
-                statistics.put(jobName, calculateJobStatistics(jobName));
+                statistics.put(jobName, calculateJobStatisticsOptimized(jobName));
             }
             
-            response.put("statistics", statistics);
-            response.put("totalJobTypes", jobNames.size());
-            
-            return response;
+            return JobStatisticsResponse.builder()
+                .statistics(statistics)
+                .totalJobTypes(jobNames.size())
+                .build();
             
         } catch (Exception e) {
             log.error("Error retrieving job statistics", e);
-            response.put("error", "Error retrieving job statistics: " + e.getMessage());
-            return response;
+            return JobStatisticsResponse.builder()
+                .error("Error retrieving job statistics: " + e.getMessage())
+                .build();
         }
     }
 
-    public Map<String, Object> getJobsByName(String jobName, int page, int size) {
-        Map<String, Object> response = new HashMap<>();
-        
+    public JobListResponse getJobsByName(String jobName, int page, int size) {
         try {
             int start = page * size;
             List<JobInstance> jobInstances = jobExplorer.getJobInstances(jobName, start, size);
             
-            List<Map<String, Object>> jobs = jobInstances.stream()
-                    .flatMap(instance -> jobExplorer.getJobExecutions(instance).stream())
-                    .map(this::createJobInfoMap)
+            List<JobExecution> allExecutions = batchGetJobExecutions(jobInstances);
+            
+            List<JobStatusResponse> jobs = allExecutions.stream()
+                    .map(this::buildJobStatusResponse)
                     .collect(Collectors.toList());
             
             int totalCount = (int) jobExplorer.getJobInstanceCount(jobName);
             
-            response.put("jobs", jobs);
-            response.put("totalJobs", totalCount);
-            response.put("currentPage", page);
-            response.put("pageSize", size);
-            response.put("totalPages", (int) Math.ceil((double) totalCount / size));
-            
-            return response;
+            return JobListResponse.builder()
+                .jobs(jobs)
+                .totalJobs(totalCount)
+                .currentPage(page)
+                .pageSize(size)
+                .totalPages((int) Math.ceil((double) totalCount / size))
+                .build();
             
         } catch (Exception e) {
             log.error("Error retrieving jobs by name: {}", jobName, e);
-            response.put("error", "Error retrieving jobs: " + e.getMessage());
-            return response;
+            return JobListResponse.builder()
+                .error("Error retrieving jobs: " + e.getMessage())
+                .build();
         }
     }
 
-    public Map<String, Object> getAllJobs() {
-        Map<String, Object> response = new HashMap<>();
-        
+    public JobListResponse getAllJobs() {
         try {
             List<String> jobNames = jobExplorer.getJobNames();
+            List<JobExecution> allExecutions = new ArrayList<>();
             
-            List<Map<String, Object>> allJobs = jobNames.stream()
-                    .flatMap(jobName -> jobExplorer.getJobInstances(jobName, 0, 50).stream())
-                    .flatMap(instance -> jobExplorer.getJobExecutions(instance).stream())
+            for (String jobName : jobNames) {
+                List<JobInstance> instances = jobExplorer.getJobInstances(jobName, 0, 50);
+                List<JobExecution> executions = batchGetJobExecutions(instances);
+                allExecutions.addAll(executions);
+            }
+            
+            List<JobStatusResponse> jobs = allExecutions.stream()
                     .sorted((e1, e2) -> Long.compare(e2.getId(), e1.getId()))
                     .limit(50)
-                    .map(this::createJobInfoMap)
+                    .map(this::buildJobStatusResponse)
                     .collect(Collectors.toList());
             
-            response.put("jobs", allJobs);
-            response.put("totalJobs", allJobs.size());
-            
-            return response;
+            return JobListResponse.builder()
+                .jobs(jobs)
+                .totalJobs(jobs.size())
+                .build();
             
         } catch (Exception e) {
             log.error("Error retrieving job list", e);
-            response.put("error", "Error retrieving job list: " + e.getMessage());
-            return response;
+            return JobListResponse.builder()
+                .error("Error retrieving job list: " + e.getMessage())
+                .build();
         }
     }
 
-    private Map<String, Object> buildJobStatusResponse(JobExecution jobExecution) {
-        Map<String, Object> response = new HashMap<>();
+    private List<JobExecution> batchGetJobExecutions(List<JobInstance> jobInstances) {
+        List<JobExecution> allExecutions = new ArrayList<>();
         
-        response.put("jobId", jobExecution.getId());
-        response.put("jobInstanceId", jobExecution.getJobInstance().getInstanceId());
-        response.put("jobName", jobExecution.getJobInstance().getJobName());
-        response.put("status", jobExecution.getStatus().toString());
-        response.put("startTime", jobExecution.getStartTime());
-        response.put("endTime", jobExecution.getEndTime());
-        response.put("exitStatus", jobExecution.getExitStatus().getExitCode());
-        response.put("progress", buildProgressInfo(jobExecution));
+        for (JobInstance instance : jobInstances) {
+            List<JobExecution> executions = jobExplorer.getJobExecutions(instance);
+            allExecutions.addAll(executions);
+        }
         
-        response.putAll(calculateElapsedTime(jobExecution));
-        
-        return response;
+        return allExecutions;
     }
 
-    private Map<String, Object> createJobInfoMap(JobExecution jobExecution) {
-        Map<String, Object> jobInfo = new HashMap<>();
+    private JobStatusResponse buildJobStatusResponse(JobExecution jobExecution) {
         JobInstance jobInstance = jobExecution.getJobInstance();
         
-        jobInfo.put("job_execution_id", jobExecution.getId());
-        jobInfo.put("job_instance_id", jobInstance.getInstanceId());
-        jobInfo.put("job_name", jobInstance.getJobName());
-        jobInfo.put("status", jobExecution.getStatus().toString());
-        jobInfo.put("start_time", jobExecution.getStartTime());
-        jobInfo.put("end_time", jobExecution.getEndTime());
-        jobInfo.put("create_time", jobExecution.getCreateTime());
-        jobInfo.put("exit_code", jobExecution.getExitStatus().getExitCode());
-        jobInfo.put("parameters", buildParametersMap(jobExecution));
-        jobInfo.put("progress", buildProgressInfo(jobExecution));
-        
-        jobInfo.putAll(calculateElapsedTime(jobExecution));
-        
-        return jobInfo;
+        return JobStatusResponse.builder()
+            .jobId(jobExecution.getId())
+            .jobInstanceId(jobInstance.getInstanceId())
+            .jobName(jobInstance.getJobName())
+            .status(jobExecution.getStatus().toString())
+            .startTime(jobExecution.getStartTime())
+            .endTime(jobExecution.getEndTime())
+            .createTime(jobExecution.getCreateTime())
+            .exitStatus(jobExecution.getExitStatus().getExitCode())
+            .progress(buildProgressInfoOptimized(jobExecution))
+            .parameters(buildParametersMap(jobExecution))
+            .elapsedTime(formatElapsedTime(calculateElapsedTimeMs(jobExecution)))
+            .elapsedTimeMs(calculateElapsedTimeMs(jobExecution))
+            .build();
     }
 
-    private Map<String, Object> buildProgressInfo(JobExecution jobExecution) {
-        Map<String, Object> progress = new HashMap<>();
+    private JobStatusResponse.JobProgressInfo buildProgressInfoOptimized(JobExecution jobExecution) {
+        Collection<StepExecution> stepExecutions = jobExecution.getStepExecutions();
         
-        for (StepExecution stepExecution : jobExecution.getStepExecutions()) {
-            progress.put("readCount", stepExecution.getReadCount());
-            progress.put("writeCount", stepExecution.getWriteCount());
-            progress.put("commitCount", stepExecution.getCommitCount());
-            progress.put("totalSkipCount", 
-                stepExecution.getReadSkipCount() + 
-                stepExecution.getWriteSkipCount() + 
-                stepExecution.getProcessSkipCount());
-            progress.put("readSkipCount", stepExecution.getReadSkipCount());
-            progress.put("writeSkipCount", stepExecution.getWriteSkipCount());
-            progress.put("processSkipCount", stepExecution.getProcessSkipCount());
-            break; 
+        if (stepExecutions.isEmpty()) {
+            return null;
         }
         
-        return progress;
+        StepExecution latestStep = stepExecutions.stream()
+                .max(Comparator.comparing(StepExecution::getId))
+                .orElse(null);
+                
+        if (latestStep == null) {
+            return null;
+        }
+        
+        return JobStatusResponse.JobProgressInfo.builder()
+            .readCount((int) latestStep.getReadCount())
+            .writeCount((int) latestStep.getWriteCount())
+            .commitCount((int) latestStep.getCommitCount())
+            .totalSkipCount((int) (latestStep.getReadSkipCount() + 
+                           latestStep.getWriteSkipCount() + 
+                           latestStep.getProcessSkipCount()))
+            .readSkipCount((int) latestStep.getReadSkipCount())
+            .writeSkipCount((int) latestStep.getWriteSkipCount())
+            .processSkipCount((int) latestStep.getProcessSkipCount())
+            .build();
     }
 
     private Map<String, Object> buildParametersMap(JobExecution jobExecution) {
-        Map<String, Object> parameters = new HashMap<>();
-        
-        if (jobExecution.getJobParameters() != null) {
-            jobExecution.getJobParameters().getParameters().forEach((key, value) -> {
-                if (!"file.content".equals(key)) {
-                    parameters.put(key, value.getValue());
-                }
-            });
-        }
-        
-        return parameters;
+        return jobExecution.getJobParameters().getParameters()
+                .entrySet().stream()
+                .collect(Collectors.toMap(
+                    Map.Entry::getKey,
+                    entry -> entry.getValue().getValue()
+                ));
     }
 
-    private Map<String, Object> calculateJobStatistics(String jobName) {
-        Map<String, Object> jobStats = new HashMap<>();
-
-        int totalInstances = 0;
+    private JobStatisticsResponse.JobTypeStatistics calculateJobStatisticsOptimized(String jobName) {
         try {
-            totalInstances = (int) jobExplorer.getJobInstanceCount(jobName);
-        } catch (NoSuchJobException e) {
-            throw new RuntimeException(e);
+            List<JobInstance> instances = jobExplorer.getJobInstances(jobName, 0, 1000);
+            List<JobExecution> executions = batchGetJobExecutions(instances);
+
+            int totalJobs = executions.size();
+            
+            Map<String, Long> statusCounts = executions.stream()
+                    .collect(Collectors.groupingBy(
+                        exec -> exec.getStatus().toString(),
+                        Collectors.counting()
+                    ));
+            
+            int completedJobs = Math.toIntExact(statusCounts.getOrDefault("COMPLETED", 0L));
+            int failedJobs = Math.toIntExact(statusCounts.getOrDefault("FAILED", 0L));
+            int runningJobs = Math.toIntExact(statusCounts.getOrDefault("STARTED", 0L) + 
+                              statusCounts.getOrDefault("STARTING", 0L));
+            
+            double successRate = totalJobs > 0 ? (double) completedJobs / totalJobs : 0.0;
+            
+            OptionalDouble avgExecutionTime = executions.stream()
+                    .filter(exec -> exec.getStartTime() != null && exec.getEndTime() != null)
+                    .mapToLong(this::calculateElapsedTimeMs)
+                    .average();
+
+            return JobStatisticsResponse.JobTypeStatistics.builder()
+                .totalJobs(totalJobs)
+                .completedJobs(completedJobs)
+                .failedJobs(failedJobs)
+                .runningJobs(runningJobs)
+                .successRate(successRate)
+                .averageExecutionTimeMs(avgExecutionTime.isPresent() ? (long) avgExecutionTime.getAsDouble() : 0L)
+                .build();
+        } catch (Exception e) {
+            log.error("Error calculating statistics for job: {}", jobName, e);
+            return JobStatisticsResponse.JobTypeStatistics.builder()
+                .totalJobs(0)
+                .build();
         }
-        jobStats.put("totalInstances", totalInstances);
-        
-        Set<JobExecution> runningExecutions = jobExplorer.findRunningJobExecutions(jobName);
-        jobStats.put("runningCount", runningExecutions.size());
-        
-        List<JobInstance> recentInstances = jobExplorer.getJobInstances(jobName, 0, 100);
-        
-        long completedCount = recentInstances.stream()
-                .flatMap(instance -> jobExplorer.getJobExecutions(instance).stream())
-                .filter(execution -> execution.getStatus() == org.springframework.batch.core.BatchStatus.COMPLETED)
-                .count();
-                
-        long failedCount = recentInstances.stream()
-                .flatMap(instance -> jobExplorer.getJobExecutions(instance).stream())
-                .filter(execution -> execution.getStatus() == org.springframework.batch.core.BatchStatus.FAILED)
-                .count();
-        
-        jobStats.put("completedCount", completedCount);
-        jobStats.put("failedCount", failedCount);
-        
-        return jobStats;
     }
 
-    private Map<String, Object> calculateElapsedTime(JobExecution jobExecution) {
-        Map<String, Object> timeInfo = new HashMap<>();
-        
-        LocalDateTime startTime = jobExecution.getStartTime();
-        LocalDateTime endTime = jobExecution.getEndTime();
-        
-        if (startTime != null) {
-            if (endTime != null) {
-                
-                java.time.Duration duration = java.time.Duration.between(startTime, endTime);
-                long elapsedSeconds = duration.getSeconds();
-                long elapsedMillis = duration.toMillis();
-                timeInfo.put("elapsedTimeSeconds", elapsedSeconds);
-                timeInfo.put("elapsedTimeMillis", elapsedMillis);
-                timeInfo.put("elapsedTimeFormatted", formatElapsedTime(elapsedSeconds));
-                timeInfo.put("isRunning", false);
-            } else {
-                
-                java.time.Duration duration = java.time.Duration.between(startTime, LocalDateTime.now());
-                long elapsedSeconds = duration.getSeconds();
-                long elapsedMillis = duration.toMillis();
-                timeInfo.put("elapsedTimeSeconds", elapsedSeconds);
-                timeInfo.put("elapsedTimeMillis", elapsedMillis);
-                timeInfo.put("elapsedTimeFormatted", formatElapsedTime(elapsedSeconds));
-                timeInfo.put("isRunning", true);
-            }
-        } else {
-            
-            timeInfo.put("elapsedTimeSeconds", 0);
-            timeInfo.put("elapsedTimeMillis", 0L);
-            timeInfo.put("elapsedTimeFormatted", "00:00:00");
-            timeInfo.put("isRunning", false);
-        }
-        
-        return timeInfo;
+    private LocalDateTime convertToLocalDateTime(java.util.Date date) {
+        return date != null ? 
+            LocalDateTime.ofInstant(date.toInstant(), ZoneId.systemDefault()) : null;
     }
-    
-    private String formatElapsedTime(long totalSeconds) {
-        long hours = totalSeconds / 3600;
-        long minutes = (totalSeconds % 3600) / 60;
-        long seconds = totalSeconds % 60;
+
+    private long calculateElapsedTimeMs(JobExecution jobExecution) {
+        if (jobExecution.getStartTime() != null && jobExecution.getEndTime() != null) {
+            return java.time.Duration.between(jobExecution.getStartTime(), jobExecution.getEndTime()).toMillis();
+        }
+        return 0L;
+    }
+
+    private String formatElapsedTime(long totalMs) {
+        if (totalMs <= 0) return "0ms";
         
-        return String.format("%02d:%02d:%02d", hours, minutes, seconds);
+        long seconds = totalMs / 1000;
+        long minutes = seconds / 60;
+        long hours = minutes / 60;
+        
+        if (hours > 0) {
+            return String.format("%dh %dm %ds", hours, minutes % 60, seconds % 60);
+        } else if (minutes > 0) {
+            return String.format("%dm %ds", minutes, seconds % 60);
+        } else {
+            return String.format("%ds", seconds);
+        }
     }
 } 

@@ -14,7 +14,6 @@ import java.util.Set;
 @AllArgsConstructor
 public class RetryConfiguration {
     
-    
     @Builder.Default
     private int maxAttempts = 3;
     
@@ -24,7 +23,6 @@ public class RetryConfiguration {
     @Builder.Default
     private Duration maxDelay = Duration.ofSeconds(30);
     
-    
     @Builder.Default
     private double backoffMultiplier = 2.0;
     
@@ -33,7 +31,6 @@ public class RetryConfiguration {
     
     @Builder.Default
     private boolean enableExponentialBackoff = true;
-    
     
     @Builder.Default
     private boolean enableCircuitBreaker = false;
@@ -46,7 +43,6 @@ public class RetryConfiguration {
     
     @Builder.Default
     private int circuitBreakerMinCalls = 3;
-    
     
     @Builder.Default
     private Set<Class<? extends Throwable>> retryableExceptions = Set.of(
@@ -67,13 +63,11 @@ public class RetryConfiguration {
     @Builder.Default
     private Set<Integer> nonRetryableHttpStatuses = Set.of(400, 401, 403, 404, 422);
     
-    
     @Builder.Default
     private boolean enableRateLimiting = false;
     
     @Builder.Default
     private int rateLimitPermitsPerSecond = 10;
-    
     
     @Builder.Default
     private boolean enableMetrics = true;
@@ -88,12 +82,10 @@ public class RetryConfiguration {
         
         double delay = initialDelay.toMillis() * Math.pow(backoffMultiplier, attemptNumber - 1);
         
-        
         if (jitterFactor > 0) {
             double jitter = delay * jitterFactor * Math.random();
             delay += jitter;
         }
-        
         
         long finalDelay = Math.min((long) delay, maxDelay.toMillis());
         
@@ -103,17 +95,14 @@ public class RetryConfiguration {
     public boolean isRetryableException(Throwable throwable) {
         Class<? extends Throwable> exceptionClass = throwable.getClass();
         
-        
         if (nonRetryableExceptions.stream().anyMatch(clazz -> clazz.isAssignableFrom(exceptionClass))) {
             return false;
         }
-        
         
         return retryableExceptions.stream().anyMatch(clazz -> clazz.isAssignableFrom(exceptionClass));
     }
     
     public boolean isRetryableHttpStatus(int statusCode) {
-        
         if (nonRetryableHttpStatuses.contains(statusCode)) {
             return false;
         }

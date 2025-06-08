@@ -32,13 +32,4 @@ public class ExchangeRateServiceImpl implements ExchangeRateService {
         
         return externalExchangeRateClient.getExchangeRateAsync(sourceCurrency.toUpperCase(), targetCurrency.toUpperCase());
     }
-
-    @Async("thirdPartyApiExecutor")
-    public CompletableFuture<ExchangeRateResponse> getExchangeRateFromThirdParty(String sourceCurrency, String targetCurrency) {
-        log.info("Fetching exchange rate from third party for {} -> {}", sourceCurrency, targetCurrency);
-        
-        return CompletableFuture.completedFuture(
-            externalExchangeRateClient.getExchangeRate(sourceCurrency.toUpperCase(), targetCurrency.toUpperCase())
-        );
-    }
 } 

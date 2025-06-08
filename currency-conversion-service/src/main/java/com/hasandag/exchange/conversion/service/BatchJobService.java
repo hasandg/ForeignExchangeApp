@@ -12,6 +12,11 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * Batch Job Service following Single Responsibility Principle.
+ * Single responsibility: Core batch job processing and coordination.
+ * No delegation - specialized services are used directly by controllers.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -20,10 +25,14 @@ public class BatchJobService {
     private final FileValidationService fileValidationService;
     private final JobExecutionService jobExecutionService;
     private final AsyncTaskManager asyncTaskManager;
-    private final JobStatusServiceAdapter jobStatusServiceAdapter;
-    private final FileContentStoreService fileContentStoreService;
 
+    /**
+     * Process synchronous batch job
+     * Core responsibility: Coordinate sync job execution flow
+     */
     public Map<String, Object> processJob(MultipartFile file, JobLauncher jobLauncher, Job bulkConversionJob) {
+        log.info("Starting synchronous batch job processing for file: {}", file.getOriginalFilename());
+        
         fileValidationService.validateFile(file);
         
         BatchJobRequest request = BatchJobRequest.builder()
@@ -34,10 +43,20 @@ public class BatchJobService {
                 .build();
                 
         BatchJobResponse response = jobExecutionService.executeSyncJob(request);
+        
+        log.info("Synchronous batch job completed for file: {} with job ID: {}", 
+                file.getOriginalFilename(), response.getJobId());
+        
         return response.toMap();
     }
 
+    /**
+     * Process asynchronous batch job
+     * Core responsibility: Coordinate async job execution flow
+     */
     public Map<String, Object> processJobAsync(MultipartFile file, JobLauncher asyncJobLauncher, Job bulkConversionJob) {
+        log.info("Starting asynchronous batch job processing for file: {}", file.getOriginalFilename());
+        
         fileValidationService.validateFile(file);
         
         String taskId = asyncTaskManager.generateTaskId();
@@ -80,48 +99,12 @@ public class BatchJobService {
         }
     }
 
+    /**
+     * Get async job status by task ID
+     * Direct async task management - no delegation
+     */
     public Map<String, Object> getAsyncJobStatus(String taskId) {
         BatchJobResponse response = asyncTaskManager.getTaskStatus(taskId);
         return response.toMap();
-    }
-
-    public Map<String, Object> getJobStatus(Long jobId) {
-        return jobStatusServiceAdapter.getJobStatus(jobId);
-    }
-
-    public Map<String, Object> getAllJobs() {
-        return jobStatusServiceAdapter.getAllJobs();
-    }
-
-    public Map<String, Object> getRunningJobs() {
-        return jobStatusServiceAdapter.getRunningJobs();
-    }
-
-    public Map<String, Object> getJobStatistics() {
-        return jobStatusServiceAdapter.getJobStatistics();
-    }
-
-    public Map<String, Object> getJobsByName(String jobName, int page, int size) {
-        return jobStatusServiceAdapter.getJobsByName(jobName, page, size);
-    }
-
-    public void cleanupJobContent(String contentKey) {
-        fileContentStoreService.removeContent(contentKey);
-    }
-
-    public Map<String, Object> getContentStoreStats() {
-        return fileContentStoreService.getStoreStats();
-    }
-
-    public int cleanupAllContent() {
-        return fileContentStoreService.clearAllContent();
-    }
-    
-    public int getActiveAsyncTaskCount() {
-        return asyncTaskManager.getActiveTaskCount();
-    }
-    
-    public int cleanupCompletedAsyncTasks() {
-        return asyncTaskManager.cleanupCompletedTasks();
     }
 } 
