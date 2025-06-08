@@ -12,11 +12,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
-/**
- * Batch Job Service following Single Responsibility Principle.
- * Single responsibility: Core batch job processing and coordination.
- * No delegation - specialized services are used directly by controllers.
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -26,11 +21,7 @@ public class BatchJobService {
     private final JobExecutionService jobExecutionService;
     private final AsyncTaskManager asyncTaskManager;
 
-    /**
-     * Process synchronous batch job
-     * Core responsibility: Coordinate sync job execution flow
-     */
-    public Map<String, Object> processJob(MultipartFile file, JobLauncher jobLauncher, Job bulkConversionJob) {
+    public Map<String, Object> processJob(MultipartFile file, JobLauncher jobLauncher, Job job) {
         log.info("Starting synchronous batch job processing for file: {}", file.getOriginalFilename());
         
         fileValidationService.validateFile(file);
@@ -38,7 +29,7 @@ public class BatchJobService {
         BatchJobRequest request = BatchJobRequest.builder()
                 .file(file)
                 .jobLauncher(jobLauncher)
-                .job(bulkConversionJob)
+                .job(job)
                 .operationType("sync")
                 .build();
                 
@@ -46,65 +37,48 @@ public class BatchJobService {
         
         log.info("Synchronous batch job completed for file: {} with job ID: {}", 
                 file.getOriginalFilename(), response.getJobId());
-        
         return response.toMap();
     }
 
-    /**
-     * Process asynchronous batch job
-     * Core responsibility: Coordinate async job execution flow
-     */
-    public Map<String, Object> processJobAsync(MultipartFile file, JobLauncher asyncJobLauncher, Job bulkConversionJob) {
+    public Map<String, Object> processJobAsync(MultipartFile file, JobLauncher jobLauncher, Job job) {
         log.info("Starting asynchronous batch job processing for file: {}", file.getOriginalFilename());
         
         fileValidationService.validateFile(file);
         
         String taskId = asyncTaskManager.generateTaskId();
         log.info("Generated async task ID: {} for file: {}", taskId, file.getOriginalFilename());
-        
+
         try {
             String contentKey = jobExecutionService.prepareFileContent(file);
             
             BatchJobRequest request = BatchJobRequest.builder()
                     .file(file)
-                    .jobLauncher(asyncJobLauncher)
-                    .job(bulkConversionJob)
+                    .jobLauncher(jobLauncher)
+                    .job(job)
                     .operationType("async")
                     .build();
-            
+                    
             CompletableFuture<BatchJobResponse> asyncTask = jobExecutionService.executeAsyncJob(request, contentKey);
             asyncTaskManager.registerTask(taskId, asyncTask);
             
-            log.info("Async task {} submitted for file: {}", taskId, file.getOriginalFilename());
-
-            BatchJobResponse response = BatchJobResponse.async(
-                taskId, 
-                "SUBMITTED", 
-                "Job submitted asynchronously",
-                file.getOriginalFilename(),
-                file.getSize(),
-                contentKey
+            Map<String, Object> response = Map.of(
+                "taskId", taskId,
+                "status", "SUBMITTED",
+                "fileName", file.getOriginalFilename(),
+                "submittedAt", java.time.Instant.now().toString()
             );
-            
-            return response.toMap();
+
+            log.info("Async task {} submitted for file: {}", taskId, file.getOriginalFilename());
+            return response;
             
         } catch (Exception e) {
-            log.error("File processing error for async job", e);
-            throw new com.hasandag.exchange.common.exception.BatchJobException(
-                "FILE_PROCESSING_ERROR",
-                "Error processing uploaded file: " + e.getMessage(),
-                org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR,
-                e
-            );
+            log.error("Error processing async job for file: {}", file.getOriginalFilename(), e);
+            throw new RuntimeException("Error processing uploaded file: " + e.getMessage(), e);
         }
     }
 
-    /**
-     * Get async job status by task ID
-     * Direct async task management - no delegation
-     */
     public Map<String, Object> getAsyncJobStatus(String taskId) {
         BatchJobResponse response = asyncTaskManager.getTaskStatus(taskId);
         return response.toMap();
     }
-} 
+}

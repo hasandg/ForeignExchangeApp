@@ -10,8 +10,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.concurrent.CompletableFuture;
-
 @RestController
 @RequestMapping("/api/v1/exchange-rates")
 @RequiredArgsConstructor
@@ -28,15 +26,5 @@ public class ExchangeRateController {
         log.debug("Sync exchange rate request: {} -> {}", sourceCurrency, targetCurrency);
         ExchangeRateResponse response = exchangeRateService.getExchangeRate(sourceCurrency, targetCurrency);
         return ResponseEntity.ok(response);
-    }
-
-    @GetMapping("/async")
-    public CompletableFuture<ResponseEntity<ExchangeRateResponse>> getExchangeRateAsync(
-            @RequestParam String sourceCurrency,
-            @RequestParam String targetCurrency) {
-        
-        log.debug("Async exchange rate request: {} -> {}", sourceCurrency, targetCurrency);
-        return exchangeRateService.getExchangeRateAsync(sourceCurrency, targetCurrency)
-                .thenApply(ResponseEntity::ok);
     }
 }

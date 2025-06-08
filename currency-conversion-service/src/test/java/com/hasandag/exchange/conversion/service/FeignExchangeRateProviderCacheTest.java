@@ -18,7 +18,7 @@ import org.springframework.context.annotation.Primary;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
 @SpringBootTest(classes = {FeignExchangeRateProvider.class, FeignExchangeRateProviderCacheTest.CacheTestConfig.class})
@@ -35,48 +35,40 @@ class FeignExchangeRateProviderCacheTest {
 
     @BeforeEach
     void setUp() {
-        // Clear all caches before each test
-        cacheManager.getCacheNames().forEach(cacheName -> 
-            cacheManager.getCache(cacheName).clear());
-        
-        // Reset mock invocations
-        clearInvocations(internalExchangeRateClient);
+        if (cacheManager != null) {
+            cacheManager.getCacheNames().forEach(cacheName -> 
+                cacheManager.getCache(cacheName).clear()
+            );
+        }
+        reset(internalExchangeRateClient);
     }
 
     @Test
-    void testCacheHit() {
-        // Given
-        String sourceCurrency = "USD";
-        String targetCurrency = "EUR";
+    void testCacheHitOnSecondCall() {
         ExchangeRateResponse mockResponse = ExchangeRateResponse.builder()
-                .sourceCurrency(sourceCurrency)
-                .targetCurrency(targetCurrency)
+                .sourceCurrency("USD")
+                .targetCurrency("EUR")
                 .rate(BigDecimal.valueOf(0.85))
                 .lastUpdated(LocalDateTime.now())
                 .build();
 
-        when(internalExchangeRateClient.getExchangeRate(sourceCurrency, targetCurrency))
+        when(internalExchangeRateClient.getExchangeRate("USD", "EUR"))
                 .thenReturn(mockResponse);
 
-        // When - First call (cache miss)
-        ExchangeRateResponse result1 = exchangeRateProvider.getExchangeRate(sourceCurrency, targetCurrency);
+        ExchangeRateResponse firstCall = exchangeRateProvider.getExchangeRate("USD", "EUR");
 
-        // When - Second call (should be cache hit)
-        ExchangeRateResponse result2 = exchangeRateProvider.getExchangeRate(sourceCurrency, targetCurrency);
+        ExchangeRateResponse secondCall = exchangeRateProvider.getExchangeRate("USD", "EUR");
 
-        // Then
-        assertNotNull(result1);
-        assertNotNull(result2);
-        assertEquals(mockResponse.getRate(), result1.getRate());
-        assertEquals(mockResponse.getRate(), result2.getRate());
-        
-        // Verify the external client was called only once (first call)
-        verify(internalExchangeRateClient, times(1)).getExchangeRate(sourceCurrency, targetCurrency);
+        assertThat(firstCall).isNotNull();
+        assertThat(secondCall).isNotNull();
+        assertThat(firstCall.getRate()).isEqualTo(BigDecimal.valueOf(0.85));
+        assertThat(secondCall.getRate()).isEqualTo(BigDecimal.valueOf(0.85));
+
+        verify(internalExchangeRateClient, times(1)).getExchangeRate("USD", "EUR");
     }
 
     @Test
-    void testDifferentCurrencyPairsNotCached() {
-        // Given
+    void testCacheMissOnDifferentCurrencyPairs() {
         ExchangeRateResponse usdEurResponse = ExchangeRateResponse.builder()
                 .sourceCurrency("USD")
                 .targetCurrency("EUR")
@@ -96,17 +88,12 @@ class FeignExchangeRateProviderCacheTest {
         when(internalExchangeRateClient.getExchangeRate("USD", "GBP"))
                 .thenReturn(usdGbpResponse);
 
-        // When
-        ExchangeRateResponse result1 = exchangeRateProvider.getExchangeRate("USD", "EUR");
-        ExchangeRateResponse result2 = exchangeRateProvider.getExchangeRate("USD", "GBP");
+        ExchangeRateResponse usdEur = exchangeRateProvider.getExchangeRate("USD", "EUR");
+        ExchangeRateResponse usdGbp = exchangeRateProvider.getExchangeRate("USD", "GBP");
 
-        // Then
-        assertNotNull(result1);
-        assertNotNull(result2);
-        assertEquals(BigDecimal.valueOf(0.85), result1.getRate());
-        assertEquals(BigDecimal.valueOf(0.75), result2.getRate());
-        
-        // Verify both calls were made (different cache keys)
+        assertThat(usdEur.getRate()).isEqualTo(BigDecimal.valueOf(0.85));
+        assertThat(usdGbp.getRate()).isEqualTo(BigDecimal.valueOf(0.75));
+
         verify(internalExchangeRateClient, times(1)).getExchangeRate("USD", "EUR");
         verify(internalExchangeRateClient, times(1)).getExchangeRate("USD", "GBP");
     }

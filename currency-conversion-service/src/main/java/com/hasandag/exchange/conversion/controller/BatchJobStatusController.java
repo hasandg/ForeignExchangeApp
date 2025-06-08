@@ -17,11 +17,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
-/**
- * Batch Job Status Controller
- * Single Responsibility: Handle job status queries, monitoring, and statistics
- * Part of fat controller refactoring to separate concerns.
- */
 @RestController
 @RequestMapping("/api/v1/batch/status")
 @RequiredArgsConstructor

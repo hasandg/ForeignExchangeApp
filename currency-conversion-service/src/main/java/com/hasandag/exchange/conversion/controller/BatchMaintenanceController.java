@@ -14,11 +14,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
-/**
- * Batch Maintenance Controller
- * Single Responsibility: Handle cleanup operations and administrative tasks
- * Part of fat controller refactoring to separate concerns.
- */
 @RestController
 @RequestMapping("/api/v1/batch/maintenance")
 @RequiredArgsConstructor

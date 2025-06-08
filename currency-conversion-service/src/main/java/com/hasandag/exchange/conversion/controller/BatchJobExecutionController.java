@@ -22,11 +22,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 
-/**
- * Batch Job Execution Controller
- * Single Responsibility: Handle job execution operations (start sync/async jobs, get async status)
- * Part of fat controller refactoring to separate concerns.
- */
 @RestController
 @RequestMapping("/api/v1/batch/jobs")
 @RequiredArgsConstructor

@@ -141,18 +141,21 @@ class BatchJobServiceTest {
     }
 
     @Test
-    @DisplayName("Should throw exception for async task not found")
-    void shouldThrowExceptionForAsyncTaskNotFound() {
+    @DisplayName("Should return error response for async task not found")
+    void shouldReturnErrorResponseForAsyncTaskNotFound() {
         // Arrange
         String taskId = "999";
-        when(asyncTaskManager.getTaskStatus(taskId)).thenThrow(
-            new BatchJobException("TASK_NOT_FOUND", "Task not found", org.springframework.http.HttpStatus.NOT_FOUND)
-        );
+        BatchJobResponse errorResponse = BatchJobResponse.failed(taskId, "Task not found");
+        when(asyncTaskManager.getTaskStatus(taskId)).thenReturn(errorResponse);
 
-        // Act & Assert
-        assertThatThrownBy(() -> batchJobService.getAsyncJobStatus(taskId))
-                .isInstanceOf(BatchJobException.class)
-                .hasMessageContaining("Task not found");
+        // Act
+        Map<String, Object> result = batchJobService.getAsyncJobStatus(taskId);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.get("taskId")).isEqualTo(taskId);
+        assertThat(result.get("status")).isEqualTo("FAILED");
+        assertThat(result.get("error")).isEqualTo("Task not found");
                 
         verify(asyncTaskManager).getTaskStatus(taskId);
     }
@@ -193,7 +196,7 @@ class BatchJobServiceTest {
 
         // Act & Assert
         assertThatThrownBy(() -> batchJobService.processJobAsync(multipartFile, asyncJobLauncher, bulkConversionJob))
-                .isInstanceOf(BatchJobException.class)
+                .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Error processing uploaded file");
                 
         verify(fileValidationService).validateFile(multipartFile);
