@@ -9,7 +9,6 @@ import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobInstance;
 import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.core.explore.JobExplorer;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -24,7 +23,6 @@ public class JobStatusService {
 
     private final JobExplorer jobExplorer;
 
-    @Cacheable(value = "job-status", key = "#jobId")
     public JobStatusResponse getJobStatus(Long jobId) {
         try {
             JobExecution jobExecution = jobExplorer.getJobExecution(jobId);
