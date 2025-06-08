@@ -195,7 +195,6 @@ http://localhost:8083/actuator/health
 http://localhost:8083/actuator/metrics
 
 ### Future Considerations
-- **Caching**: Implement caching for frequently accessed data(For example, in conversion service, exchange rates could be cached)
 - **Scaling**: Consider using Kubernetes for orchestration
 - **Security**: Add authentication/authorization
 - **Sharding**: For following reasons, sharding could be considerable:
