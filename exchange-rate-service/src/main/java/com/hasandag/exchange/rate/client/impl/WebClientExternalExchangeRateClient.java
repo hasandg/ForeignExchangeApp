@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -88,10 +89,10 @@ public class WebClientExternalExchangeRateClient implements ExternalExchangeRate
                     .retrieve()
                     .onStatus(status -> status.value() == rateLimitStatusCode,
                             clientResponse -> Mono.error(new RateServiceException("External API rate limit exceeded")))
-                    .onStatus(status -> status.is4xxClientError(),
+                    .onStatus(HttpStatusCode::is4xxClientError,
                             clientResponse -> clientResponse.bodyToMono(String.class)
                                     .flatMap(body -> Mono.error(new RateServiceException("Client error: " + clientResponse.statusCode() + " - " + body))))
-                    .onStatus(status -> status.is5xxServerError(),
+                    .onStatus(HttpStatusCode::is5xxServerError,
                             clientResponse -> clientResponse.bodyToMono(String.class)
                                     .flatMap(body -> Mono.error(new RateServiceException("Server error: " + clientResponse.statusCode() + " - " + body))))
                     .bodyToMono(Map.class);
