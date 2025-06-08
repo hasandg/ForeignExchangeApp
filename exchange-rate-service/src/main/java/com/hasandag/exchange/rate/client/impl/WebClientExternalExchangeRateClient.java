@@ -10,30 +10,27 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ScheduledExecutorService;
 
 @Component
 @Slf4j
-public class RestClientExternalExchangeRateClient implements ExternalExchangeRateClient {
+public class WebClientExternalExchangeRateClient implements ExternalExchangeRateClient {
 
-    private final RestClient restClient;
-    private final Executor virtualThreadExecutor;
+    private final WebClient webClient;
     private final RetryService retryService;
     private final int rateLimitStatusCode;
 
-    public RestClientExternalExchangeRateClient(
-            @Qualifier("exchangeRateApiRestClient") RestClient restClient,
-            @Qualifier("externalServiceExecutor") Executor virtualThreadExecutor,
+    public WebClientExternalExchangeRateClient(
+            @Qualifier("exchangeRateApiWebClient") WebClient webClient,
             @Qualifier("retryScheduler") ScheduledExecutorService retryScheduler,
             @Value("${exchange.client.max-attempts:3}") int maxAttempts,
             @Value("${exchange.client.backoff-delay-ms:1000}") long backoffDelayMs,
@@ -45,8 +42,7 @@ public class RestClientExternalExchangeRateClient implements ExternalExchangeRat
             @Value("${exchange.client.circuit-breaker-timeout-ms:60000}") long circuitBreakerTimeoutMs,
             @Value("${exchange.client.rate-limit-status-code:429}") int rateLimitStatusCode) {
         
-        this.restClient = restClient;
-        this.virtualThreadExecutor = virtualThreadExecutor;
+        this.webClient = webClient;
         this.rateLimitStatusCode = rateLimitStatusCode;
         
         RetryConfiguration retryConfig = RetryConfiguration.builder()
@@ -64,7 +60,7 @@ public class RestClientExternalExchangeRateClient implements ExternalExchangeRat
         
         this.retryService = new RetryServiceImpl(retryConfig, retryScheduler);
         
-        log.info("Initialized RestClient with retry service: maxAttempts={}, backoff={}ms->{}ms, multiplier={}, circuitBreaker={}", 
+        log.info("Initialized WebClient with retry service: maxAttempts={}, backoff={}ms->{}ms, multiplier={}, circuitBreaker={}", 
                 maxAttempts, backoffDelayMs, maxDelayMs, backoffMultiplier, circuitBreakerEnabled);
     }
 
@@ -80,56 +76,42 @@ public class RestClientExternalExchangeRateClient implements ExternalExchangeRat
         ).join();
     }
 
-    @Override
-    public CompletableFuture<ExchangeRateResponse> getExchangeRateAsync(String sourceCurrency, String targetCurrency) {
-        log.debug("Fetching exchange rate asynchronously: {}-{}", sourceCurrency, targetCurrency);
-        
-        String operationName = "getExchangeRateAsync_" + sourceCurrency + "_" + targetCurrency;
-        
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                return fetchExchangeRateFromApi(sourceCurrency, targetCurrency, "ASYNC");
-            } catch (Exception e) {
-                log.error("Async HTTP call failed: {}", e.getMessage());
-                throw new RuntimeException(e);
-            }
-        }, virtualThreadExecutor).thenCompose(result -> {
-            return retryService.executeWithRetry(() -> result, operationName);
-        });
-    }
-
     private ExchangeRateResponse fetchExchangeRateFromApi(String sourceCurrency, String targetCurrency, String callType) {
         log.debug("Making {} HTTP call: {}-{}", callType, sourceCurrency, targetCurrency);
         
         try {
-            ResponseEntity<Map> response = restClient
+            Mono<Map> responseMono = webClient
                     .get()
                     .uri("/{sourceCurrency}", sourceCurrency)
                     .header("X-Request-ID", java.util.UUID.randomUUID().toString())
                     .header("X-Call-Type", callType)
-                    .header("X-Thread-Type", Thread.currentThread().isVirtual() ? "VIRTUAL" : "PLATFORM")
                     .retrieve()
-                    .onStatus(status -> status.is4xxClientError(), (request, resp) -> {
-                        if (resp.getStatusCode().value() == rateLimitStatusCode) {
-                            throw new RateServiceException("External API rate limit exceeded");
-                        }
-                        throw new RateServiceException("Client error: " + resp.getStatusCode());
-                    })
-                    .onStatus(status -> status.is5xxServerError(), (request, resp) -> {
-                        throw new RateServiceException("Server error: " + resp.getStatusCode());
-                    })
-                    .toEntity(Map.class);
+                    .onStatus(status -> status.value() == rateLimitStatusCode,
+                            clientResponse -> Mono.error(new RateServiceException("External API rate limit exceeded")))
+                    .onStatus(status -> status.is4xxClientError(),
+                            clientResponse -> clientResponse.bodyToMono(String.class)
+                                    .flatMap(body -> Mono.error(new RateServiceException("Client error: " + clientResponse.statusCode() + " - " + body))))
+                    .onStatus(status -> status.is5xxServerError(),
+                            clientResponse -> clientResponse.bodyToMono(String.class)
+                                    .flatMap(body -> Mono.error(new RateServiceException("Server error: " + clientResponse.statusCode() + " - " + body))))
+                    .bodyToMono(Map.class);
 
-            return parseResponse(response.getBody(), sourceCurrency, targetCurrency, callType);
+            Map<String, Object> responseBody = responseMono.block();
             
-        } catch (org.springframework.web.client.HttpStatusCodeException e) {
-            String errorMessage = callType + " HTTP " + e.getStatusCode() + " error: " + e.getResponseBodyAsString();
+            log.debug("{} HTTP response: body={}", callType, responseBody);
+            
+            return parseResponse(responseBody, sourceCurrency, targetCurrency, callType);
+            
+        } catch (WebClientResponseException e) {
+            String errorMessage = callType + " WebClient error: " + e.getStatusCode() + " - " + e.getResponseBodyAsString();
+            log.error("WebClient error during {} API call: {}", callType, errorMessage);
+            throw new RateServiceException(errorMessage, e);
+        } catch (RateServiceException e) {
+            throw e;
+        } catch (Exception e) {
+            String errorMessage = callType + " HTTP request failed: " + e.getMessage();
             log.error("HTTP error during {} API call: {}", callType, errorMessage);
             throw new RateServiceException(errorMessage, e);
-            
-        } catch (org.springframework.web.client.ResourceAccessException e) {
-            log.error("Resource access error during {} API call: {}", callType, e.getMessage());
-            throw new RateServiceException(callType + " connection failed: " + e.getMessage(), e);
         }
     }
 
@@ -152,9 +134,8 @@ public class RestClientExternalExchangeRateClient implements ExternalExchangeRat
                     .lastUpdated(LocalDateTime.now())
                     .build();
             
-            log.debug("{} call fetched rate: {}-{} = {} [Thread: {}]", 
-                     callType, sourceCurrency, targetCurrency, exchangeRateResponse.getRate(),
-                     Thread.currentThread().isVirtual() ? "VIRTUAL" : "PLATFORM");
+            log.debug("{} call fetched rate: {}-{} = {}", 
+                     callType, sourceCurrency, targetCurrency, exchangeRateResponse.getRate());
             return exchangeRateResponse;
         } else {
             log.error("{} API error response: {}", callType, body);
