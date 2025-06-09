@@ -54,3 +54,4 @@ logs/
 
 # JMETER
 /**report_folder/
+*.jtl
