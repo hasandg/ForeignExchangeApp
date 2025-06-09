@@ -36,21 +36,28 @@ spring:
 
 exchange:
   api:
-    url: ${EXCHANGE_API_URL:https://api.fxratesapi.com/latest}
+    url: ${EXCHANGE_API_URL:http://api.fixer.io/v1/latest}
+    access-key: ${EXCHANGE_API_ACCESS_KEY:your-api-key-here}
+    rate-limit-status-code: ${EXCHANGE_API_RATE_LIMIT_STATUS_CODE:429}
   connect-timeout: 5s
   read-timeout: 30s
   client:
-    max-attempts: 3
-    backoff-delay-ms: 1000
-    backoff-multiplier: 2.0
-    max-delay-ms: 30000
-    jitter-factor: 0.1
-    circuit-breaker-enabled: true
-    circuit-breaker-failure-threshold: 5
-    circuit-breaker-timeout-ms: 60000
-    rate-limit-status-code: 429
+    connect-timeout-ms: ${EXCHANGE_CLIENT_CONNECT_TIMEOUT:5000}
+    read-timeout-ms: ${EXCHANGE_CLIENT_READ_TIMEOUT:10000}
+    max-attempts: ${EXCHANGE_CLIENT_MAX_ATTEMPTS:3}
+    backoff-delay-ms: ${EXCHANGE_CLIENT_BACKOFF_DELAY:1000}
+    backoff-multiplier: ${EXCHANGE_CLIENT_BACKOFF_MULTIPLIER:2.0}
+    max-delay-ms: ${EXCHANGE_CLIENT_MAX_DELAY:30000}
+    jitter-factor: ${EXCHANGE_CLIENT_JITTER:0.1}
+    circuit-breaker-enabled: ${EXCHANGE_CLIENT_CIRCUIT_BREAKER_ENABLED:true}
+    circuit-breaker-failure-threshold: ${EXCHANGE_CLIENT_CIRCUIT_BREAKER_FAILURE_THRESHOLD:5}
+    circuit-breaker-timeout-ms: ${EXCHANGE_CLIENT_CIRCUIT_BREAKER_TIMEOUT:60000}
+    rate-limit-status-code: ${EXCHANGE_CLIENT_RATE_LIMIT_STATUS_CODE:429}
   user-agent:
     default: "Exchange-Rate-Service/1.0"
+  reactive:
+    max-retries: ${EXCHANGE_REACTIVE_MAX_RETRIES:3}
+    base-delay: ${EXCHANGE_REACTIVE_BASE_DELAY:1000}
 
 external-services:
   pool-size: 10

@@ -151,6 +151,14 @@ conversion:
     max-size: ${CONVERSION_CONTENT_STORE_MAX_SIZE:100}
     cleanup-interval: ${CONVERSION_CONTENT_STORE_CLEANUP_INTERVAL:300000}
     max-age: ${CONVERSION_CONTENT_STORE_MAX_AGE:3600000}
+  hybrid:
+    large-file-threshold: ${CONVERSION_HYBRID_LARGE_FILE_THRESHOLD:52428800}
+    reactive-enabled: ${CONVERSION_HYBRID_REACTIVE_ENABLED:true}
+    high-frequency-threshold: ${CONVERSION_HYBRID_HIGH_FREQUENCY_THRESHOLD:100}
+  reactive:
+    batch-size: ${CONVERSION_REACTIVE_BATCH_SIZE:100}
+    max-concurrency: ${CONVERSION_REACTIVE_MAX_CONCURRENCY:10}
+    backpressure-buffer: ${CONVERSION_REACTIVE_BACKPRESSURE_BUFFER:1000}
 
 management:
   endpoints:

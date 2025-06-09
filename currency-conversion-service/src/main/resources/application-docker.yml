@@ -136,9 +136,9 @@ conversion:
     url: ${EXCHANGE_RATE_SERVICE_URL:http://exchange-rate-service:8083}
   batch:
     size: ${CONVERSION_BATCH_SIZE:1000}
-    chunk-size: ${CONVERSION_BATCH_CHUNK_SIZE:100}
-    skip-limit: ${CONVERSION_BATCH_SKIP_LIMIT:1000}
-    retry-limit: ${CONVERSION_BATCH_RETRY_LIMIT:3}
+    chunk-size: ${CONVERSION_BATCH_CHUNK_SIZE:50}
+    skip-limit: ${CONVERSION_BATCH_SKIP_LIMIT:500}
+    retry-limit: ${CONVERSION_BATCH_RETRY_LIMIT:2}
     job:
       restart-enabled: ${CONVERSION_BATCH_RESTART_ENABLED:true}
       max-attempts: ${CONVERSION_BATCH_MAX_ATTEMPTS:3}
@@ -151,6 +151,14 @@ conversion:
     max-size: ${CONVERSION_CONTENT_STORE_MAX_SIZE:100}
     cleanup-interval: ${CONVERSION_CONTENT_STORE_CLEANUP_INTERVAL:300000}
     max-age: ${CONVERSION_CONTENT_STORE_MAX_AGE:3600000}
+  hybrid:
+    large-file-threshold: ${CONVERSION_HYBRID_LARGE_FILE_THRESHOLD:52428800}
+    reactive-enabled: ${CONVERSION_HYBRID_REACTIVE_ENABLED:true}
+    high-frequency-threshold: ${CONVERSION_HYBRID_HIGH_FREQUENCY_THRESHOLD:100}
+  reactive:
+    batch-size: ${CONVERSION_REACTIVE_BATCH_SIZE:50}
+    max-concurrency: ${CONVERSION_REACTIVE_MAX_CONCURRENCY:5}
+    backpressure-buffer: ${CONVERSION_REACTIVE_BACKPRESSURE_BUFFER:500}
 
 management:
   endpoints:
