@@ -51,3 +51,6 @@ logs/
 **/volumes/
 /docker-data/
 /logs/
+
+# JMETER
+/**report_folder/
