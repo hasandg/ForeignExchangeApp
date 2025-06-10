@@ -4,9 +4,6 @@ server:
 spring:
   application:
     name: exchange-rate-service
-  threads:
-    virtual:
-      enabled: true
   task:
     execution:
       pool:
@@ -36,78 +33,56 @@ spring:
       cache-null-values: false
       key-prefix: "fx:"
       use-key-prefix: true
-  jackson:
-    serialization:
-      write-dates-as-timestamps: false
-    deserialization:
-      fail-on-unknown-properties: false
-    default-property-inclusion: non_null
-    time-zone: UTC
-
-logging:
-  level:
-    com.hasandag: INFO
-    org.springframework.web: INFO
-    org.apache.hc: INFO
-
-springdoc:
-  api-docs:
-    path: /api/v1/api-docs
-  swagger-ui:
-    path: /api/v1/swagger-ui.html
-    operationsSorter: method
-    tagsSorter: alpha
-  default-produces-media-type: application/json
 
 exchange:
   api:
     url: ${EXCHANGE_API_URL:https://open.er-api.com/v6/latest}
-  webclient:
-    connect-timeout: 10s
-    read-timeout: 10s
-    write-timeout: 10s
-    response-timeout: 15s
-  virtual-threads:
-    connect-timeout: 5s
-    read-timeout: 30s
+  connect-timeout: 5s
+  read-timeout: 30s
   client:
-    max-attempts: 5
-    backoff-delay-ms: 500
+    max-attempts: 3
+    backoff-delay-ms: 1000
     backoff-multiplier: 2.0
     max-delay-ms: 30000
-    jitter-factor: 0.15
-    rate-limit-status-code: 429
+    jitter-factor: 0.1
     circuit-breaker-enabled: true
     circuit-breaker-failure-threshold: 5
     circuit-breaker-timeout-ms: 60000
-    circuit-breaker-min-calls: 3
-  retry:
-    scheduler:
-      threads: 2
+    rate-limit-status-code: 429
   user-agent:
     default: "Exchange-Rate-Service/1.0"
-    virtual-threads: "Exchange-Rate-Service-VirtualThreads/1.0"
 
 external-services:
-  virtual-threads:
-    enabled: true
-    pool-size: 50
-    timeout: 30s
-  executors:
-    external-service:
-      thread-name-prefix: "external-service-"
-      thread-name-counter: 0
-      core-pool-size-factor: 0.5
-      queue-capacity-factor: 2.0
-    third-party-api:
-      thread-name-prefix: "third-party-api-"
-      thread-name-counter: 0
-      core-pool-size: 10
-      max-pool-size: 25
-      queue-capacity: 50
-    http-client:
-      thread-name-prefix: "http-client-"
-      thread-name-counter: 0
-      core-pool-size: 15
-      max-pool-size: 30
-      queue-capacity: 100
+  pool-size: 10
+  timeout: 30s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info,metrics,prometheus"
+  endpoint:
+    health:
+      show-details: when_authorized
+    metrics:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+resilience4j:
+  retry:
+    instances:
+      exchange-rate-api:
+        max-attempts: 3
+        wait-duration: 1000ms
+        exponential-backoff-multiplier: 2
+        randomized-wait-factor: 0.5
+  circuitbreaker:
+    instances:
+      exchange-rate-api:
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30000ms
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
