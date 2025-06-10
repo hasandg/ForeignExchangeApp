@@ -4,7 +4,6 @@ import com.hasandag.exchange.common.constants.KafkaConstants;
 import com.hasandag.exchange.common.dto.cqrs.ConversionEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
@@ -19,8 +18,10 @@ public class ConversionEventProducer {
         log.debug("Sending conversion event: {}", event.getTransactionId());
         try {
             kafkaTemplate.send(KafkaConstants.CONVERSION_EVENT_TOPIC, event.getEventId(), event);
+            log.debug("Successfully sent conversion event: {}", event.getTransactionId());
         } catch (Exception e) {
-            log.error("Error sending conversion event", e);
+            log.error("Failed to send conversion event for transaction: {}", event.getTransactionId(), e);
+            throw new RuntimeException("Failed to publish conversion event for transaction: " + event.getTransactionId(), e);
         }
     }
 } 

@@ -47,7 +47,8 @@ public class ConversionEventConsumer {
                     log.debug("Duplicate conversion skipped: {}", event.getTransactionId());
                 }
             } catch (Exception e) {
-                log.error("Error saving conversion to read model: {}", event.getTransactionId(), e);
+                log.error("Failed to save conversion to read model for transaction: {}", event.getTransactionId(), e);
+                throw new RuntimeException("Failed to update read model for transaction: " + event.getTransactionId(), e);
             }
         } else {
             log.warn("Ignoring event type: {} for: {}", 
