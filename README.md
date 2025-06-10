@@ -16,7 +16,17 @@ A microservices-based currency conversion system built with Spring Boot, impleme
 
 The system follows a microservices architecture with clear separation of concerns:
 
-[![Architecture Diagram](ForeignExchangeApplicationDiagram.png)] 
+![Architecture Diagram](ForeignExchangeApplicationDiagram.png)
+
+
+### Batch Processing Architecture
+![chunk-oriented-processing-with-item-processor](chunk-oriented-processing-with-item-processor.png)
+Figure 1. Chunk-oriented Processing
+
+
+### Conversion Service Batch Processing Architecture
+
+![BatchProcessing](BatchProcessing.png)
 
 ## Quick Start
 
@@ -31,8 +41,8 @@ Make sure you have these installed (learned this the hard way after spending an 
 
 **Clone and build:**
 ```bash
-git clone https://github.com/hasandg/foreign-exchange-app
-cd foreign-exchange-app
+git clone https://github.com/hasandg/ForeignExchangeApp
+cd ForeignExchangeApp
 mvn clean install
 ```
 
@@ -84,7 +94,7 @@ cd exchange-rate-service
 mvn spring-boot:run
 ```
 
-##### Terminal 3 - Currency Conversion Service  
+##### Terminal 3 - Currency Conversion Service
 ```bash
 cd currency-conversion-service
 mvn spring-boot:run
@@ -163,7 +173,7 @@ The system uses CQRS (Command Query Responsibility Segregation) to separate writ
 - Stores operational data
 - Publishes events to Kafka
 
-### Read Model (PostgreSQL) 
+### Read Model (PostgreSQL)
 - Optimized for queries and reporting
 - Updated via Kafka events
 - Supports complex analytics
@@ -195,11 +205,11 @@ http://localhost:8083/actuator/health
 http://localhost:8083/actuator/metrics
 
 ### Future Considerations
-- **Caching**: Implement caching for frequently accessed data(For example, in conversion service, exchange rates could be cached)
+- **Build-In Exchange Rates**: Adding Build in Exchange Rate Cache supported by web socket with live data
 - **Scaling**: Consider using Kubernetes for orchestration
 - **Security**: Add authentication/authorization
 - **Sharding**: For following reasons, sharding could be considerable:
-     * MongoDB and TransactionId is the key for checking existence of conversion in the database
-     * In our CQRS implementation, MongoDB s performance is critical for responding to the client in real-time
+  * MongoDB and TransactionId is the key for checking existence of conversion in the database
+  * In our CQRS implementation, MongoDB s performance is critical for responding to the client in real-time
 - **Monitoring**: Integrate with Prometheus/Grafana for better observability
 - **Logging**: Use ELK stack for centralized logging
