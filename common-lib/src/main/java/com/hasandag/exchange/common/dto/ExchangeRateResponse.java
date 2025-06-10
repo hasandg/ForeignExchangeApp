@@ -2,6 +2,7 @@ package com.hasandag.exchange.common.dto;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
+import com.hasandag.exchange.common.enums.Currency;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,8 +17,8 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class ExchangeRateResponse {
     
-    private String sourceCurrency;
-    private String targetCurrency;
+    private Currency sourceCurrency;
+    private Currency targetCurrency;
     private BigDecimal rate;
     
     @JsonSerialize(using = LocalDateTimeSerializer.class)

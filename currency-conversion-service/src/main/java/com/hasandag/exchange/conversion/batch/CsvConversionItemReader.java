@@ -1,7 +1,9 @@
 package com.hasandag.exchange.conversion.batch;
 
 import com.hasandag.exchange.common.dto.ConversionRequest;
+import com.hasandag.exchange.common.enums.Currency;
 import com.hasandag.exchange.conversion.service.FileContentStoreService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -22,13 +24,13 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 
 @Slf4j
+@RequiredArgsConstructor
 public class CsvConversionItemReader implements ItemReader<ConversionRequest>, ItemStream {
 
     private static final String FILE_CONTENT_KEY = "file.content.key";
     private static final String ORIGINAL_FILENAME_KEY = "original.filename";
     private static final String CURRENT_ITEM_COUNT_KEY = "csv.reader.current.item.count";
 
-    @Autowired
     private FileContentStoreService fileContentStoreService;
 
     private String fileContent;
@@ -151,8 +153,8 @@ public class CsvConversionItemReader implements ItemReader<ConversionRequest>, I
 
             ConversionRequest request = ConversionRequest.builder()
                     .sourceAmount(sourceAmount)
-                    .sourceCurrency(sourceCurrency.trim().toUpperCase())
-                    .targetCurrency(targetCurrency.trim().toUpperCase())
+                    .sourceCurrency(Currency.fromCode(sourceCurrency.trim().toUpperCase()))
+                    .targetCurrency(Currency.fromCode(targetCurrency.trim().toUpperCase()))
                     .build();
 
             log.debug("✅ Successfully parsed record #{} in file {}: {} {} -> {}", 

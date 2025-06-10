@@ -1,8 +1,7 @@
 package com.hasandag.exchange.common.dto;
 
-import com.hasandag.exchange.common.validation.CurrencyCode;
+import com.hasandag.exchange.common.enums.Currency;
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -21,11 +20,9 @@ public class ConversionRequest {
     @DecimalMin(value = "0.01", message = "Source amount must be greater than zero")
     private BigDecimal sourceAmount;
     
-    @NotBlank(message = "Source currency code is required")
-    @CurrencyCode
-    private String sourceCurrency;
+    @NotNull(message = "Source currency is required")
+    private Currency sourceCurrency;
     
-    @NotBlank(message = "Target currency code is required")
-    @CurrencyCode
-    private String targetCurrency;
+    @NotNull(message = "Target currency is required")
+    private Currency targetCurrency;
 } 

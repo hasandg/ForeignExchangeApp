@@ -21,8 +21,6 @@ import java.util.UUID;
 public class ConversionItemProcessor implements ItemProcessor<ConversionRequest, ConversionResponse> {
 
     private final InternalExchangeRateClient exchangeRateClient;
-    private final CurrencyConversionPostgresRepository postgresRepository; 
-    private final CurrencyConversionMongoRepository mongoRepository;
 
     @Override
     public ConversionResponse process(@NonNull ConversionRequest request) throws Exception {

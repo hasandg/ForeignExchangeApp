@@ -1,5 +1,6 @@
 package com.hasandag.exchange.common.dto.cqrs;
 
+import com.hasandag.exchange.common.enums.Currency;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,8 +19,8 @@ public class ConversionEvent {
     private String eventId = UUID.randomUUID().toString();
     private String commandId;
     private String transactionId;
-    private String sourceCurrency;
-    private String targetCurrency;
+    private Currency sourceCurrency;
+    private Currency targetCurrency;
     private BigDecimal sourceAmount;
     private BigDecimal targetAmount;
     private BigDecimal exchangeRate;

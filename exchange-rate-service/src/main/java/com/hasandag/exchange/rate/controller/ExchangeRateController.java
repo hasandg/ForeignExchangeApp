@@ -1,6 +1,7 @@
 package com.hasandag.exchange.rate.controller;
 
 import com.hasandag.exchange.common.dto.ExchangeRateResponse;
+import com.hasandag.exchange.common.enums.Currency;
 import com.hasandag.exchange.rate.service.ExchangeRateService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,8 +21,8 @@ public class ExchangeRateController {
 
     @GetMapping
     public ResponseEntity<ExchangeRateResponse> getExchangeRate(
-            @RequestParam String sourceCurrency,
-            @RequestParam String targetCurrency) {
+            @RequestParam Currency sourceCurrency,
+            @RequestParam Currency targetCurrency) {
         
         log.debug("Sync exchange rate request: {} -> {}", sourceCurrency, targetCurrency);
         ExchangeRateResponse response = exchangeRateService.getExchangeRate(sourceCurrency, targetCurrency);

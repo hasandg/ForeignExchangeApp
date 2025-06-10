@@ -44,8 +44,8 @@ public class CurrencyConversionPostgresItemWriter implements ItemWriter<Conversi
     private CurrencyConversionEntity mapToEntity(ConversionResponse response) {
         CurrencyConversionEntity entity = new CurrencyConversionEntity();
         entity.setTransactionId(response.getTransactionId());
-        entity.setSourceCurrency(response.getSourceCurrency());
-        entity.setTargetCurrency(response.getTargetCurrency());
+        entity.setSourceCurrency(response.getSourceCurrency().getCode());
+        entity.setTargetCurrency(response.getTargetCurrency().getCode());
         entity.setSourceAmount(response.getSourceAmount());
         entity.setTargetAmount(response.getTargetAmount());
         entity.setExchangeRate(response.getExchangeRate());

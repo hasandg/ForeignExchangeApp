@@ -1,5 +1,6 @@
 package com.hasandag.exchange.conversion.model;
 
+import com.hasandag.exchange.common.enums.Currency;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -55,4 +56,13 @@ public class CurrencyConversionDocument {
     @Field("status")
     @Indexed
     private String status = "COMPLETED";
+    
+    // Currency enum convenience methods
+    public Currency getSourceCurrencyEnum() {
+        return sourceCurrency != null ? Currency.fromCode(sourceCurrency) : null;
+    }
+    
+    public Currency getTargetCurrencyEnum() {
+        return targetCurrency != null ? Currency.fromCode(targetCurrency) : null;
+    }
 } 

@@ -1,6 +1,7 @@
 package com.hasandag.exchange.conversion.client;
 
 import com.hasandag.exchange.common.dto.ExchangeRateResponse;
+import com.hasandag.exchange.common.enums.Currency;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -9,6 +10,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 public interface ExchangeRateFeignClient {
 
     @GetMapping
-    ExchangeRateResponse getExchangeRate(@RequestParam("sourceCurrency") String sourceCurrency,
-                                       @RequestParam("targetCurrency") String targetCurrency);
+    ExchangeRateResponse getExchangeRate(@RequestParam("sourceCurrency") Currency sourceCurrency,
+                                       @RequestParam("targetCurrency") Currency targetCurrency);
 } 

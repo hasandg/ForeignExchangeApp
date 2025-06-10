@@ -23,7 +23,6 @@ public class ConversionEventConsumer {
         groupId = KafkaConstants.EVENT_HANDLER_GROUP,
         containerFactory = "eventListenerContainerFactory"
     )
-    @Transactional
     public void consumeConversionEvent(ConversionEvent event) {
         log.info("Received ConversionEvent: {}, Type: {}", 
                 event.getTransactionId(), event.getEventType());
@@ -32,8 +31,8 @@ public class ConversionEventConsumer {
             
             CurrencyConversionEntity conversionEntity = CurrencyConversionEntity.builder()
                     .transactionId(event.getTransactionId())
-                    .sourceCurrency(event.getSourceCurrency())
-                    .targetCurrency(event.getTargetCurrency())
+                    .sourceCurrency(event.getSourceCurrency().getCode())
+                    .targetCurrency(event.getTargetCurrency().getCode())
                     .sourceAmount(event.getSourceAmount())
                     .targetAmount(event.getTargetAmount())
                     .exchangeRate(event.getExchangeRate())

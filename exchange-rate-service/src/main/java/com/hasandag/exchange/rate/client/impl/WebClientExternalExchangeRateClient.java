@@ -2,6 +2,7 @@ package com.hasandag.exchange.rate.client.impl;
 
 import com.hasandag.exchange.common.client.ExternalExchangeRateClient;
 import com.hasandag.exchange.common.dto.ExchangeRateResponse;
+import com.hasandag.exchange.common.enums.Currency;
 import com.hasandag.exchange.common.exception.RateServiceException;
 import com.hasandag.exchange.common.retry.RetryConfiguration;
 import com.hasandag.exchange.common.retry.RetryService;
@@ -22,8 +23,8 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 
-@Component
 @Slf4j
+@Component
 public class WebClientExternalExchangeRateClient implements ExternalExchangeRateClient {
 
     private final WebClient webClient;
@@ -31,53 +32,35 @@ public class WebClientExternalExchangeRateClient implements ExternalExchangeRate
     private final int rateLimitStatusCode;
 
     public WebClientExternalExchangeRateClient(
-            @Qualifier("exchangeRateApiWebClient") WebClient webClient,
-            @Qualifier("retryScheduler") ScheduledExecutorService retryScheduler,
-            @Value("${exchange.client.max-attempts:3}") int maxAttempts,
-            @Value("${exchange.client.backoff-delay-ms:1000}") long backoffDelayMs,
-            @Value("${exchange.client.backoff-multiplier:2.0}") double backoffMultiplier,
-            @Value("${exchange.client.max-delay-ms:30000}") long maxDelayMs,
-            @Value("${exchange.client.jitter-factor:0.1}") double jitterFactor,
-            @Value("${exchange.client.circuit-breaker-enabled:true}") boolean circuitBreakerEnabled,
-            @Value("${exchange.client.circuit-breaker-failure-threshold:5}") int failureThreshold,
-            @Value("${exchange.client.circuit-breaker-timeout-ms:60000}") long circuitBreakerTimeoutMs,
-            @Value("${exchange.client.rate-limit-status-code:429}") int rateLimitStatusCode) {
-        
+            @Qualifier("externalApiWebClient") WebClient webClient,
+            @Qualifier("retryScheduler") ScheduledExecutorService scheduler,
+            @Value("${exchange.api.rate-limit-status-code:429}") int rateLimitStatusCode) {
         this.webClient = webClient;
         this.rateLimitStatusCode = rateLimitStatusCode;
         
         RetryConfiguration retryConfig = RetryConfiguration.builder()
-                .maxAttempts(maxAttempts)
-                .initialDelay(Duration.ofMillis(backoffDelayMs))
-                .maxDelay(Duration.ofMillis(maxDelayMs))
-                .backoffMultiplier(backoffMultiplier)
-                .jitterFactor(jitterFactor)
-                .enableExponentialBackoff(true)
-                .enableCircuitBreaker(circuitBreakerEnabled)
-                .circuitBreakerFailureThreshold(failureThreshold)
-                .circuitBreakerTimeout(Duration.ofMillis(circuitBreakerTimeoutMs))
-                .circuitBreakerMinCalls(3)
+                .maxAttempts(3)
+                .initialDelay(Duration.ofSeconds(1))
+                .maxDelay(Duration.ofSeconds(30))
+                .backoffMultiplier(2.0)
+                .jitterFactor(0.1)
                 .build();
         
-        this.retryService = new RetryServiceImpl(retryConfig, retryScheduler);
-        
-        log.info("Initialized WebClient with retry service: maxAttempts={}, backoff={}ms->{}ms, multiplier={}, circuitBreaker={}", 
-                maxAttempts, backoffDelayMs, maxDelayMs, backoffMultiplier, circuitBreakerEnabled);
+        this.retryService = new RetryServiceImpl(retryConfig, scheduler);
     }
 
     @Override
-    @Cacheable(value = "exchangeRates", key = "#sourceCurrency + '-' + #targetCurrency")
-    public ExchangeRateResponse getExchangeRate(String sourceCurrency, String targetCurrency) {
-        log.debug("Fetching exchange rate synchronously: {}-{}", sourceCurrency, targetCurrency);
+    @Cacheable(value = "exchangeRates", key = "#sourceCurrency.code + '-' + #targetCurrency.code")
+    public ExchangeRateResponse getExchangeRate(Currency sourceCurrency, Currency targetCurrency) {
+        log.info("Fetching exchange rate for {} -> {}", sourceCurrency, targetCurrency);
         
-        String operationName = "getExchangeRate_" + sourceCurrency + "_" + targetCurrency;
         return retryService.executeWithRetry(
-                () -> fetchExchangeRateFromApi(sourceCurrency, targetCurrency, "SYNC"),
-                operationName
+            () -> fetchExchangeRateFromApi(sourceCurrency, targetCurrency, "Primary"),
+            "ExchangeRateAPI-" + sourceCurrency + "-" + targetCurrency
         ).join();
     }
 
-    private ExchangeRateResponse fetchExchangeRateFromApi(String sourceCurrency, String targetCurrency, String callType) {
+    private ExchangeRateResponse fetchExchangeRateFromApi(Currency sourceCurrency, Currency targetCurrency, String callType) {
         log.debug("Making {} HTTP call: {}-{}", callType, sourceCurrency, targetCurrency);
         
         try {
@@ -116,7 +99,7 @@ public class WebClientExternalExchangeRateClient implements ExternalExchangeRate
         }
     }
 
-    private ExchangeRateResponse parseResponse(Map<String, Object> body, String sourceCurrency, String targetCurrency, String callType) {
+    private ExchangeRateResponse parseResponse(Map<String, Object> body, Currency sourceCurrency, Currency targetCurrency, String callType) {
         if (body == null) {
             throw new RateServiceException("Failed to get exchange rate from API: Empty response");
         }
@@ -147,18 +130,18 @@ public class WebClientExternalExchangeRateClient implements ExternalExchangeRate
             log.debug("{} detected Fixer.io format", callType);
         }
         // Format 5: Direct rates object (some APIs return rates directly)
-        else if (body.containsKey(targetCurrency)) {
+        else if (body.containsKey(targetCurrency.getCode())) {
             rates = body;
             log.debug("{} detected direct rates format", callType);
         }
         
-        if (rates == null || !rates.containsKey(targetCurrency)) {
+        if (rates == null || !rates.containsKey(targetCurrency.getCode())) {
             log.error("{} API response parsing failed: rates={}, targetCurrency={}, body={}", 
                      callType, rates, targetCurrency, body);
             throw new RateServiceException("Exchange rate not found for " + targetCurrency + " in API response");
         }
         
-        double rate = ((Number) rates.get(targetCurrency)).doubleValue();
+        double rate = ((Number) rates.get(targetCurrency.getCode())).doubleValue();
         ExchangeRateResponse exchangeRateResponse = ExchangeRateResponse.builder()
                 .sourceCurrency(sourceCurrency)
                 .targetCurrency(targetCurrency)

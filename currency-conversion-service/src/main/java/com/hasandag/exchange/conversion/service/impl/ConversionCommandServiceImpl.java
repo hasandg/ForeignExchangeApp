@@ -8,7 +8,6 @@ import com.hasandag.exchange.conversion.kafka.producer.ConversionEventProducer;
 import com.hasandag.exchange.conversion.model.CurrencyConversionDocument;
 import com.hasandag.exchange.conversion.repository.command.CurrencyConversionMongoRepository;
 import com.hasandag.exchange.conversion.service.ConversionCommandService;
-import com.hasandag.exchange.conversion.service.ConversionValidationService;
 import com.hasandag.exchange.conversion.service.ExchangeRateProvider;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,17 +26,14 @@ public class ConversionCommandServiceImpl implements ConversionCommandService {
 
     private final ExchangeRateProvider exchangeRateProvider;
     private final ConversionEventProducer eventProducer;
-    private final ConversionValidationService validationService;
     private final CurrencyConversionMongoRepository mongoRepository;
 
     public ConversionCommandServiceImpl(
             ExchangeRateProvider exchangeRateProvider,
             @Autowired(required = false) ConversionEventProducer eventProducer,
-            ConversionValidationService validationService,
             @Autowired(required = false) CurrencyConversionMongoRepository mongoRepository) {
         this.exchangeRateProvider = exchangeRateProvider;
         this.eventProducer = eventProducer;
-        this.validationService = validationService;
         this.mongoRepository = mongoRepository;
     }
 
@@ -46,9 +42,7 @@ public class ConversionCommandServiceImpl implements ConversionCommandService {
     public ConversionResponse processConversionWithEvents(ConversionRequest request) {
         log.info("Processing conversion with events: {} {} to {}", 
                 request.getSourceAmount(), request.getSourceCurrency(), request.getTargetCurrency());
-        
-        validationService.validateConversionRequest(request);
-        
+
         ExchangeRateResponse rateResponse = exchangeRateProvider.getExchangeRate(
                 request.getSourceCurrency(),
                 request.getTargetCurrency());
@@ -78,8 +72,8 @@ public class ConversionCommandServiceImpl implements ConversionCommandService {
             
             CurrencyConversionDocument document = CurrencyConversionDocument.builder()
                     .transactionId(transactionId)
-                    .sourceCurrency(request.getSourceCurrency())
-                    .targetCurrency(request.getTargetCurrency())
+                    .sourceCurrency(request.getSourceCurrency().getCode())
+                    .targetCurrency(request.getTargetCurrency().getCode())
                     .sourceAmount(request.getSourceAmount())
                     .targetAmount(targetAmount)
                     .exchangeRate(exchangeRate)
@@ -104,8 +98,8 @@ public class ConversionCommandServiceImpl implements ConversionCommandService {
         if (eventProducer != null) {
             ConversionEvent event = ConversionEvent.builder()
                     .transactionId(document.getTransactionId())
-                    .sourceCurrency(document.getSourceCurrency())
-                    .targetCurrency(document.getTargetCurrency())
+                    .sourceCurrency(document.getSourceCurrencyEnum())
+                    .targetCurrency(document.getTargetCurrencyEnum())
                     .sourceAmount(document.getSourceAmount())
                     .targetAmount(document.getTargetAmount())
                     .exchangeRate(document.getExchangeRate())

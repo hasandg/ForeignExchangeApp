@@ -2,6 +2,7 @@ package com.hasandag.exchange.conversion.client.impl;
 
 import com.hasandag.exchange.common.client.InternalExchangeRateClient;
 import com.hasandag.exchange.common.dto.ExchangeRateResponse;
+import com.hasandag.exchange.common.enums.Currency;
 import com.hasandag.exchange.common.exception.RateServiceException;
 import com.hasandag.exchange.conversion.client.ExchangeRateFeignClient;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +17,7 @@ public class FeignInternalExchangeRateClient implements InternalExchangeRateClie
     private final ExchangeRateFeignClient feignClient;
 
     @Override
-    public ExchangeRateResponse getExchangeRate(String sourceCurrency, String targetCurrency) {
+    public ExchangeRateResponse getExchangeRate(Currency sourceCurrency, Currency targetCurrency) {
         log.debug("Getting exchange rate from {} to {} using Feign client", sourceCurrency, targetCurrency);
         
         try {

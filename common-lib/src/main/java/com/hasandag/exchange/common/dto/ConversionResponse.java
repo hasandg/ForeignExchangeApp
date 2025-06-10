@@ -1,5 +1,6 @@
 package com.hasandag.exchange.common.dto;
 
+import com.hasandag.exchange.common.enums.Currency;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,8 +16,8 @@ import java.time.LocalDateTime;
 public class ConversionResponse {
     
     private String transactionId;
-    private String sourceCurrency;
-    private String targetCurrency;
+    private Currency sourceCurrency;
+    private Currency targetCurrency;
     private BigDecimal sourceAmount;
     private BigDecimal targetAmount;
     private BigDecimal exchangeRate;

@@ -53,8 +53,8 @@ public class CurrencyConversionMongoItemWriter implements ItemWriter<ConversionR
     private CurrencyConversionDocument mapToMongoDocument(ConversionResponse response) {
         return CurrencyConversionDocument.builder()
                 .transactionId(response.getTransactionId())
-                .sourceCurrency(response.getSourceCurrency())
-                .targetCurrency(response.getTargetCurrency())
+                .sourceCurrency(response.getSourceCurrency().getCode())
+                .targetCurrency(response.getTargetCurrency().getCode())
                 .sourceAmount(response.getSourceAmount())
                 .targetAmount(response.getTargetAmount())
                 .exchangeRate(response.getExchangeRate())

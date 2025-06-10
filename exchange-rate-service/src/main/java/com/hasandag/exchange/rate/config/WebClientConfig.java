@@ -38,7 +38,7 @@ public class WebClientConfig {
                 connectTimeout, readTimeout, userAgent, exchangeApiUrl);
     }
 
-    @Bean("exchangeRateApiWebClient")
+    @Bean("externalApiWebClient")
     public WebClient exchangeRateApiWebClient() {
         log.info("Creating exchange rate API WebClient with base URL: {}", exchangeApiUrl);
         

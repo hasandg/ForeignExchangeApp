@@ -38,7 +38,6 @@ spring:
   data:
     mongodb:
       uri: ${MONGODB_URI:mongodb://localhost:27017/fxcommanddb}
-      enabled: ${MONGODB_ENABLED:true}
       database: fxcommanddb
       auto-index-creation: true
   cloud:

@@ -1,6 +1,7 @@
 package com.hasandag.exchange.rate.controller;
 
 import com.hasandag.exchange.common.dto.ExchangeRateResponse;
+import com.hasandag.exchange.common.enums.Currency;
 import com.hasandag.exchange.rate.service.ExchangeRateService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,8 +34,8 @@ class ExchangeRateControllerTest {
 
     @Test
     void testGetExchangeRate() {
-        String sourceCurrency = "USD";
-        String targetCurrency = "EUR";
+        Currency sourceCurrency = Currency.USD;
+        Currency targetCurrency = Currency.EUR;
         ExchangeRateResponse mockResponse = ExchangeRateResponse.builder()
                 .sourceCurrency(sourceCurrency)
                 .targetCurrency(targetCurrency)

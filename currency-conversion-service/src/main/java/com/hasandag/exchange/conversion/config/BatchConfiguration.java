@@ -60,7 +60,7 @@ public class BatchConfiguration {
     @Bean
     public ItemProcessor<ConversionRequest, ConversionResponse> conversionItemProcessor() {
         log.info("Creating conversion item processor with internal exchange rate client");
-        return new ConversionItemProcessor(internalExchangeRateClient, postgresRepository, mongoRepository);
+        return new ConversionItemProcessor(internalExchangeRateClient);
     }
 
     @Bean

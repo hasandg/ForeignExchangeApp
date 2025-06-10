@@ -1,7 +1,8 @@
 package com.hasandag.exchange.rate.service;
 
-import com.hasandag.exchange.common.dto.ExchangeRateResponse;
 import com.hasandag.exchange.common.client.ExternalExchangeRateClient;
+import com.hasandag.exchange.common.dto.ExchangeRateResponse;
+import com.hasandag.exchange.common.enums.Currency;
 import com.hasandag.exchange.rate.service.impl.ExchangeRateServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,8 +35,8 @@ class ExchangeRateServiceTest {
     @Test
     @DisplayName("Test getting exchange rate from external API")
     void testGetExchangeRate() {
-        String sourceCurrency = "USD";
-        String targetCurrency = "EUR";
+        Currency sourceCurrency = Currency.USD;
+        Currency targetCurrency = Currency.EUR;
         ExchangeRateResponse mockResponse = ExchangeRateResponse.builder()
                 .sourceCurrency(sourceCurrency)
                 .targetCurrency(targetCurrency)
@@ -43,7 +44,7 @@ class ExchangeRateServiceTest {
                 .lastUpdated(LocalDateTime.now())
                 .build();
         
-        when(externalExchangeRateClient.getExchangeRate(sourceCurrency.toUpperCase(), targetCurrency.toUpperCase()))
+        when(externalExchangeRateClient.getExchangeRate(sourceCurrency, targetCurrency))
                 .thenReturn(mockResponse);
 
         ExchangeRateResponse result = exchangeRateService.getExchangeRate(sourceCurrency, targetCurrency);
@@ -53,28 +54,28 @@ class ExchangeRateServiceTest {
         assertEquals(targetCurrency, result.getTargetCurrency());
         assertEquals(BigDecimal.valueOf(0.85), result.getRate());
         verify(externalExchangeRateClient, times(1))
-            .getExchangeRate(sourceCurrency.toUpperCase(), targetCurrency.toUpperCase());
+            .getExchangeRate(sourceCurrency, targetCurrency);
     }
 
     @Test
     @DisplayName("Test case insensitive currency codes")
     void testCaseInsensitiveCurrencyCodes() {
-        String sourceCurrency = "usd";
-        String targetCurrency = "eur";
+        Currency sourceCurrency = Currency.USD;
+        Currency targetCurrency = Currency.EUR;
         ExchangeRateResponse mockResponse = ExchangeRateResponse.builder()
-                .sourceCurrency("USD")
-                .targetCurrency("EUR")
+                .sourceCurrency(sourceCurrency)
+                .targetCurrency(targetCurrency)
                 .rate(BigDecimal.valueOf(0.85))
                 .lastUpdated(LocalDateTime.now())
                 .build();
         
-        when(externalExchangeRateClient.getExchangeRate("USD", "EUR"))
+        when(externalExchangeRateClient.getExchangeRate(sourceCurrency, targetCurrency))
                 .thenReturn(mockResponse);
 
         ExchangeRateResponse result = exchangeRateService.getExchangeRate(sourceCurrency, targetCurrency);
 
         assertNotNull(result);
         verify(externalExchangeRateClient, times(1))
-            .getExchangeRate("USD", "EUR");
+            .getExchangeRate(sourceCurrency, targetCurrency);
     }
 } 
