@@ -28,7 +28,7 @@ public class RedisConfig {
     @Value("${spring.data.redis.port}")
     private int redisPort;
 
-    @Value("${conversion.cache.exchange-rates.ttl:PT1H}")
+    @Value("${conversion.cache.conversion-exchange-rates.ttl}")
     private Duration exchangeRatesTtl;
 
     @Bean

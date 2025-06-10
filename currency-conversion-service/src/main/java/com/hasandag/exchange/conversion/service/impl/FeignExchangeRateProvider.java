@@ -16,7 +16,7 @@ public class FeignExchangeRateProvider implements ExchangeRateProvider {
     private final InternalExchangeRateClient internalExchangeRateClient;
 
     @Override
-    @Cacheable(value = "exchange-rates", key = "#sourceCurrency + '-' + #targetCurrency")
+    @Cacheable(value = "conversion-exchange-rates", key = "#sourceCurrency + '-' + #targetCurrency")
     public ExchangeRateResponse getExchangeRate(String sourceCurrency, String targetCurrency) {
         log.info("Fetching exchange rate from {} to {} using internal client (cache miss)", sourceCurrency, targetCurrency);
         

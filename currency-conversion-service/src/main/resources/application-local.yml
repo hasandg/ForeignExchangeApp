@@ -148,7 +148,7 @@ conversion:
   exchange-rate-service:
     url: ${EXCHANGE_RATE_SERVICE_URL:http://localhost:8083}
   cache:
-    exchange-rates:
+    conversion-exchange-rates:
       ttl: ${CONVERSION_CACHE_EXCHANGE_RATES_TTL:2}  # 2 seconds
       enabled: ${CONVERSION_CACHE_EXCHANGE_RATES_ENABLED:true}
   batch:
