@@ -82,11 +82,25 @@ public class WebClientExternalExchangeRateClient implements ExternalExchangeRate
             throw new RateServiceException("Exchange rate not found for " + targetCurrency);
         }
         
-        double rate = ((Number) rates.get(targetCurrency.getCode())).doubleValue();
+        Object rateValue = rates.get(targetCurrency.getCode());
+        BigDecimal rate;
+        
+        try {
+            if (rateValue instanceof String) {
+                rate = new BigDecimal((String) rateValue);
+            } else if (rateValue instanceof Number) {
+                rate = new BigDecimal(rateValue.toString());
+            } else {
+                throw new RateServiceException("Invalid rate format: " + rateValue);
+            }
+        } catch (NumberFormatException e) {
+            throw new RateServiceException("Cannot parse exchange rate: " + rateValue, e);
+        }
+        
         return ExchangeRateResponse.builder()
                 .sourceCurrency(sourceCurrency)
                 .targetCurrency(targetCurrency)
-                .rate(BigDecimal.valueOf(rate))
+                .rate(rate)
                 .lastUpdated(LocalDateTime.now())
                 .build();
     }
