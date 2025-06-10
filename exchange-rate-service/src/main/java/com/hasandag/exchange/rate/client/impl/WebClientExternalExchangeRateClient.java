@@ -83,7 +83,7 @@ public class WebClientExternalExchangeRateClient implements ExternalExchangeRate
         try {
             Mono<Map> responseMono = webClient
                     .get()
-                    .uri("/{sourceCurrency}", sourceCurrency)
+                    .uri("")
                     .header("X-Request-ID", java.util.UUID.randomUUID().toString())
                     .header("X-Call-Type", callType)
                     .retrieve()
@@ -121,28 +121,54 @@ public class WebClientExternalExchangeRateClient implements ExternalExchangeRate
             throw new RateServiceException("Failed to get exchange rate from API: Empty response");
         }
         
-        if ("success".equals(body.get("result"))) {
-            Map<String, Object> rates = (Map<String, Object>) body.get("rates");
-            if (rates == null || !rates.containsKey(targetCurrency)) {
-                throw new RateServiceException("Exchange rate not found for " + targetCurrency);
-            }
-            
-            double rate = ((Number) rates.get(targetCurrency)).doubleValue();
-            ExchangeRateResponse exchangeRateResponse = ExchangeRateResponse.builder()
-                    .sourceCurrency(sourceCurrency)
-                    .targetCurrency(targetCurrency)
-                    .rate(BigDecimal.valueOf(rate))
-                    .lastUpdated(LocalDateTime.now())
-                    .build();
-            
-            log.debug("{} call fetched rate: {}-{} = {}", 
-                     callType, sourceCurrency, targetCurrency, exchangeRateResponse.getRate());
-            return exchangeRateResponse;
-        } else {
-            log.error("{} API error response: {}", callType, body);
-            throw new RateServiceException("Failed to get exchange rate from API: " + 
-                                         body.getOrDefault("error-type", "Unknown error"));
+        log.debug("{} API response format detection: keys={}", callType, body.keySet());
+        
+        // Handle multiple API response formats
+        Map<String, Object> rates = null;
+        
+        // Format 1: ExchangeRate-API.com format: {"base": "USD", "rates": {"EUR": 0.8747}}
+        if (body.containsKey("base") && body.containsKey("rates")) {
+            rates = (Map<String, Object>) body.get("rates");
+            log.debug("{} detected ExchangeRate-API.com format", callType);
         }
+        // Format 2: open.er-api.com format: {"result": "success", "base_code": "USD", "rates": {"EUR": 0.8747}}
+        else if ("success".equals(body.get("result")) && body.containsKey("rates") && body.containsKey("base_code")) {
+            rates = (Map<String, Object>) body.get("rates");
+            log.debug("{} detected open.er-api.com format", callType);
+        }
+        // Format 3: Mock/Custom format: {"result": "success", "rates": {"EUR": 0.8747}}
+        else if ("success".equals(body.get("result")) && body.containsKey("rates")) {
+            rates = (Map<String, Object>) body.get("rates");
+            log.debug("{} detected Mock/Custom format", callType);
+        }
+        // Format 4: Fixer.io format: {"success": true, "rates": {"EUR": 0.8747}}
+        else if (Boolean.TRUE.equals(body.get("success")) && body.containsKey("rates")) {
+            rates = (Map<String, Object>) body.get("rates");
+            log.debug("{} detected Fixer.io format", callType);
+        }
+        // Format 5: Direct rates object (some APIs return rates directly)
+        else if (body.containsKey(targetCurrency)) {
+            rates = body;
+            log.debug("{} detected direct rates format", callType);
+        }
+        
+        if (rates == null || !rates.containsKey(targetCurrency)) {
+            log.error("{} API response parsing failed: rates={}, targetCurrency={}, body={}", 
+                     callType, rates, targetCurrency, body);
+            throw new RateServiceException("Exchange rate not found for " + targetCurrency + " in API response");
+        }
+        
+        double rate = ((Number) rates.get(targetCurrency)).doubleValue();
+        ExchangeRateResponse exchangeRateResponse = ExchangeRateResponse.builder()
+                .sourceCurrency(sourceCurrency)
+                .targetCurrency(targetCurrency)
+                .rate(BigDecimal.valueOf(rate))
+                .lastUpdated(LocalDateTime.now())
+                .build();
+        
+        log.debug("{} call fetched rate: {}-{} = {}", 
+                 callType, sourceCurrency, targetCurrency, exchangeRateResponse.getRate());
+        return exchangeRateResponse;
     }
     
     public com.hasandag.exchange.common.retry.RetryMetrics getRetryMetrics() {

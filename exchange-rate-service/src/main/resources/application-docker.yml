@@ -36,7 +36,7 @@ spring:
 
 exchange:
   api:
-    url: ${EXCHANGE_API_URL:https://api.fxratesapi.com/latest}
+    url: ${EXCHANGE_API_URL:https://open.er-api.com/v6/latest}
   connect-timeout: 5s
   read-timeout: 30s
   client:

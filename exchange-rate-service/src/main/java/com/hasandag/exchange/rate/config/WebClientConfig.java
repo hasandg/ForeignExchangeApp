@@ -21,23 +21,26 @@ public class WebClientConfig {
     private final Duration connectTimeout;
     private final Duration readTimeout;
     private final String userAgent;
+    private final String exchangeApiUrl;
 
     public WebClientConfig(
             @Value("${exchange.connect-timeout:5s}") Duration connectTimeout,
             @Value("${exchange.read-timeout:30s}") Duration readTimeout,
-            @Value("${exchange.user-agent.default:Exchange-Rate-Service/1.0}") String userAgent) {
+            @Value("${exchange.user-agent.default:Exchange-Rate-Service/1.0}") String userAgent,
+            @Value("${exchange.api.url}") String exchangeApiUrl) {
         
         this.connectTimeout = connectTimeout;
         this.readTimeout = readTimeout;
         this.userAgent = userAgent;
+        this.exchangeApiUrl = exchangeApiUrl;
         
-        log.info("WebClient configured with: connectTimeout={}, readTimeout={}, userAgent={}",
-                connectTimeout, readTimeout, userAgent);
+        log.info("WebClient configured with: connectTimeout={}, readTimeout={}, userAgent={}, exchangeApiUrl={}",
+                connectTimeout, readTimeout, userAgent, exchangeApiUrl);
     }
 
     @Bean("exchangeRateApiWebClient")
     public WebClient exchangeRateApiWebClient() {
-        log.info("Creating exchange rate API WebClient");
+        log.info("Creating exchange rate API WebClient with base URL: {}", exchangeApiUrl);
         
         ConnectionProvider connectionProvider = ConnectionProvider.builder("exchange-rate-api")
                 .maxConnections(100)
@@ -52,6 +55,7 @@ public class WebClientConfig {
                 .responseTimeout(readTimeout);
 
         return WebClient.builder()
+                .baseUrl(exchangeApiUrl)
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .defaultHeader("User-Agent", userAgent)
                 .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(1024 * 1024))
