@@ -11,8 +11,6 @@ import reactor.netty.http.client.HttpClient;
 import reactor.netty.resources.ConnectionProvider;
 
 import java.time.Duration;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 
 @Configuration
 @Slf4j
@@ -83,15 +81,5 @@ public class WebClientConfig {
                 .defaultHeader("User-Agent", userAgent)
                 .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(512 * 1024))
                 .build();
-    }
-
-    @Bean("retryScheduler")
-    public ScheduledExecutorService retryScheduler() {
-        log.info("Creating retry scheduler");
-        return Executors.newScheduledThreadPool(2, r -> {
-            Thread thread = new Thread(r, "retry-scheduler");
-            thread.setDaemon(true);
-            return thread;
-        });
     }
 } 

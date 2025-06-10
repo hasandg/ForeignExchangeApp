@@ -40,9 +40,6 @@ public class ConversionCommandServiceImpl implements ConversionCommandService {
     @Override
     @Transactional
     public ConversionResponse processConversionWithEvents(ConversionRequest request) {
-        log.info("Processing conversion with events: {} {} to {}", 
-                request.getSourceAmount(), request.getSourceCurrency(), request.getTargetCurrency());
-
         ExchangeRateResponse rateResponse = exchangeRateProvider.getExchangeRate(
                 request.getSourceCurrency(),
                 request.getTargetCurrency());
@@ -55,7 +52,6 @@ public class ConversionCommandServiceImpl implements ConversionCommandService {
         LocalDateTime timestamp = LocalDateTime.now();
 
         CurrencyConversionDocument savedDocument = saveToWriteModel(request, targetAmount, rateResponse.getRate(), transactionId, timestamp);
-        
         publishConversionEvent(savedDocument);
 
         return buildResponse(request, targetAmount, rateResponse.getRate(), transactionId, timestamp);
@@ -64,12 +60,10 @@ public class ConversionCommandServiceImpl implements ConversionCommandService {
     private CurrencyConversionDocument saveToWriteModel(ConversionRequest request, BigDecimal targetAmount, 
                                                        BigDecimal exchangeRate, String transactionId, LocalDateTime timestamp) {
         if (mongoRepository == null) {
-            log.error("MongoDB repository not available - Write Model is required for CQRS");
-            throw new RuntimeException("Write Model (MongoDB) is unavailable - cannot process conversion");
+            throw new RuntimeException("Write Model (MongoDB) is unavailable");
         }
         
         try {
-            
             CurrencyConversionDocument document = CurrencyConversionDocument.builder()
                     .transactionId(transactionId)
                     .sourceCurrency(request.getSourceCurrency().getCode())
@@ -81,16 +75,13 @@ public class ConversionCommandServiceImpl implements ConversionCommandService {
                     .status("COMPLETED")
                     .build();
 
-            CurrencyConversionDocument saved = mongoRepository.save(document);
-            log.debug("Saved conversion to Write Model (MongoDB): {}", transactionId);
-            return saved;
+            return mongoRepository.save(document);
             
         } catch (DuplicateKeyException e) {
-            log.debug("Duplicate detected in MongoDB (handled gracefully): {}", transactionId);
             return mongoRepository.findByTransactionId(transactionId).orElseThrow();
         } catch (Exception e) {
-            log.error("Failed to save to Write Model (MongoDB): {} - {}", transactionId, e.getMessage());
-            throw new RuntimeException("Failed to persist conversion to Write Model", e);
+            log.error("Failed to save to MongoDB: {}", e.getMessage());
+            throw new RuntimeException("Failed to persist conversion", e);
         }
     }
 
@@ -108,9 +99,6 @@ public class ConversionCommandServiceImpl implements ConversionCommandService {
                     .build();
 
             eventProducer.sendConversionEvent(event);
-            log.debug("Published conversion event: {}", document.getTransactionId());
-        } else {
-            log.warn("Event producer not available - CQRS event not published");
         }
     }
 

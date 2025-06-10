@@ -1,6 +1,5 @@
 package com.hasandag.exchange.conversion.model;
 
-import com.hasandag.exchange.common.enums.Currency;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -23,7 +22,8 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "currency_conversions", indexes = {
-    @Index(name = "idx_transaction_id", columnList = "transactionId", unique = true)
+        @Index(name = "idx_transaction_id", columnList = "transactionId", unique = true),
+        @Index(name = "idx_timestamp", columnList = "timestamp")
 })
 @Getter
 @Setter
@@ -57,23 +57,6 @@ public class CurrencyConversionEntity {
     
     @Column(nullable = false)
     private LocalDateTime timestamp;
-    
-    // Currency enum convenience methods
-    public Currency getSourceCurrencyEnum() {
-        return sourceCurrency != null ? Currency.fromCode(sourceCurrency) : null;
-    }
-    
-    public void setSourceCurrencyEnum(Currency currency) {
-        this.sourceCurrency = currency != null ? currency.getCode() : null;
-    }
-    
-    public Currency getTargetCurrencyEnum() {
-        return targetCurrency != null ? Currency.fromCode(targetCurrency) : null;
-    }
-    
-    public void setTargetCurrencyEnum(Currency currency) {
-        this.targetCurrency = currency != null ? currency.getCode() : null;
-    }
     
     @PrePersist
     protected void onCreate() {

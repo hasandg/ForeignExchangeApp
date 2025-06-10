@@ -57,7 +57,6 @@ public class CurrencyConversionDocument {
     @Indexed
     private String status = "COMPLETED";
     
-    // Currency enum convenience methods
     public Currency getSourceCurrencyEnum() {
         return sourceCurrency != null ? Currency.fromCode(sourceCurrency) : null;
     }
