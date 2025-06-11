@@ -16,10 +16,5 @@ public interface CurrencyConversionPostgresRepository extends JpaRepository<Curr
     Optional<CurrencyConversionEntity> findByTransactionId(String transactionId);
     
     boolean existsByTransactionId(String transactionId);
-    
-    Page<CurrencyConversionEntity> findByTimestampBetweenOrderByTimestampDesc(LocalDateTime startDate, LocalDateTime endDate, Pageable pageable);
-    
-    Page<CurrencyConversionEntity> findByTimestampGreaterThanEqualOrderByTimestampDesc(LocalDateTime startDate, Pageable pageable);
-    
-    Page<CurrencyConversionEntity> findByTimestampLessThanEqualOrderByTimestampDesc(LocalDateTime endDate, Pageable pageable);
-} 
+
+}
