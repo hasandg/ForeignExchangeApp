@@ -44,8 +44,4 @@ public class ConversionQueryServiceImpl implements ConversionQueryService {
 
         return repository.findAll(spec, pageable);
     }
-
-    private Page<CurrencyConversionEntity> getEmptyConversionsPage(Pageable pageable) {
-        return Page.empty(pageable);
-    }
 } 
