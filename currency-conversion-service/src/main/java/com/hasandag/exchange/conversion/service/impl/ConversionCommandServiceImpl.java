@@ -10,8 +10,6 @@ import com.hasandag.exchange.conversion.repository.command.CurrencyConversionMon
 import com.hasandag.exchange.conversion.service.ConversionCommandService;
 import com.hasandag.exchange.conversion.service.ExchangeRateProvider;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,8 +28,8 @@ public class ConversionCommandServiceImpl implements ConversionCommandService {
 
     public ConversionCommandServiceImpl(
             ExchangeRateProvider exchangeRateProvider,
-            @Autowired(required = false) ConversionEventProducer eventProducer,
-            @Autowired(required = false) CurrencyConversionMongoRepository mongoRepository) {
+            ConversionEventProducer eventProducer,
+            CurrencyConversionMongoRepository mongoRepository) {
         this.exchangeRateProvider = exchangeRateProvider;
         this.eventProducer = eventProducer;
         this.mongoRepository = mongoRepository;
@@ -59,10 +57,7 @@ public class ConversionCommandServiceImpl implements ConversionCommandService {
 
     private CurrencyConversionDocument saveToWriteModel(ConversionRequest request, BigDecimal targetAmount, 
                                                        BigDecimal exchangeRate, String transactionId, LocalDateTime timestamp) {
-        if (mongoRepository == null) {
-            throw new RuntimeException("Write Model (MongoDB) is unavailable");
-        }
-        
+
         try {
             CurrencyConversionDocument document = CurrencyConversionDocument.builder()
                     .transactionId(transactionId)
@@ -77,9 +72,7 @@ public class ConversionCommandServiceImpl implements ConversionCommandService {
 
             return mongoRepository.save(document);
             
-        } catch (DuplicateKeyException e) {
-            return mongoRepository.findByTransactionId(transactionId).orElseThrow();
-        } catch (Exception e) {
+        }catch (Exception e) {
             log.error("Failed to save to MongoDB: {}", e.getMessage());
             throw new RuntimeException("Failed to persist conversion", e);
         }
